@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             PerceptronXTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = "Android",
+                        name = "Selwyn",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -42,6 +42,6 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 @Composable
 fun GreetingPreview() {
     PerceptronXTheme {
-        Greeting("Android")
+        Greeting("Selwyn Gwapo!")
     }
 }

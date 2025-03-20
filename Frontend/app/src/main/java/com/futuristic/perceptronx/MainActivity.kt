@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             PerceptronXTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Greeting(
-                        name = "Selwyn",
+                        name = "Selwyn Gwapo!",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

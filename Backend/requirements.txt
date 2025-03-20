@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+redis
+fastapi-redis-cache
+pydantic
+python-dotenv
+httpx
+celery
+flower
+asyncpg
+databases
+aiosqlite
+motor

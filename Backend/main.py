@@ -10,4 +10,3 @@ app.include_router(router)
 def home():
     return {"message": "Hello, PerceptronX!"}
 
-    

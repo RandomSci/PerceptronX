@@ -11,3 +11,6 @@ asyncpg
 databases
 aiosqlite
 motor
+python-multipart 
+itsdangerous 
+starlette-session

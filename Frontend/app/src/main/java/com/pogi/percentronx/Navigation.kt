@@ -1,49 +1,94 @@
 package com.pogi.percentronx
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.util.Patterns
+import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -53,6 +98,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.navigation.animation.composable
+import com.google.gson.Gson
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -200,158 +246,1005 @@ fun Dashboard() {
 }
 
 @Composable
-fun Profile() {
-    var status by remember { mutableStateOf<String?>("valid") }
+fun Profile(onAuthStateChanged: (String) -> Unit = {}) {
+    var status by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(key1 = Unit) {
-        retrofitClient.instance.getStatus().enqueue(object : Callback<Status> {
-            override fun onResponse(call: Call<Status>, response: Response<Status>) {
-                if (response.isSuccessful) {
-                    status = response.body()?.status
-                    Log.d("API", "Status received: $status")
-                } else {
-                    Log.e("API", "Error: ${response.errorBody()?.string()}")
-                }
-            }
-
-            override fun onFailure(call: Call<Status>, t: Throwable) {
-                Log.e("API", "Failure: ${t.message}")
-            }
-        })
+    LaunchedEffect(Unit) {
+        try {
+            val response = retrofitClient.instance.getStatus()
+            status = response.status
+            Log.d("API", "Status received: $status")
+            status?.let { onAuthStateChanged(it) }
+        } catch (e: Exception) {
+            status = "invalid"
+            Log.e("API", "Failure: ${e.message}")
+            onAuthStateChanged("invalid")
+        } finally {
+            isLoading = false
+        }
     }
 
-    if (status == "valid") {
+    when {
+        isLoading -> LoadingScreen()
+        status == "valid" -> LoggedInProfileScreen(
+            onLogoutSuccess = {
+                status = "invalid"
+                onAuthStateChanged("invalid")
+            }
+        )
+        else -> AuthScreen(
+            onLoginSuccess = {
+                status = "valid"
+                onAuthStateChanged("valid")
+            }
+        )
+    }
+}
+
+@Composable
+fun LoadingScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                "Profile Screen",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary
+            CircularProgressIndicator(
+                modifier = Modifier.size(60.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 5.dp
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Loading PerceptronX...",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+    }
+}
+
+@Composable
+fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Profile",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .padding(8.dp)
+                .graphicsLayer {
+                    rotationZ = 360f
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                size.minDimension / 2
+                val strokeWidth = size.minDimension * 0.05f
+
+                val primaryColor = Color.Green // Replace with a color of your choice
+
+                // Drawing the arc directly
+                drawArc(
+                    color = primaryColor,
+                    startAngle = 0f,
+                    sweepAngle = 270f,
+                    useCenter = false,
+                    style = Stroke(width = strokeWidth)
+                )
+            }
+
+            // Profile image
             Surface(
                 modifier = Modifier.size(120.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.primaryContainer
+                shape = CircleShape,
+                color = Color.LightGray,
+                border = BorderStroke(3.dp, Color.Black)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Filled.Person,
                         contentDescription = "Profile",
                         modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = Color.DarkGray
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(
-                "User Name",
-                style = MaterialTheme.typography.titleLarge
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // User info card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
             )
-            Text(
-                "user@example.com",
-                style = MaterialTheme.typography.bodyMedium
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "User Information",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.Blue
+                    )
+
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.Blue
+                    )
+                }
+
+                Divider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = Color.Gray
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                InfoRow(
+                    icon = Icons.Default.Person,
+                    label = "Username:",
+                    value = "User123"
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                InfoRow(
+                    icon = Icons.Default.Email,
+                    label = "Email:",
+                    value = "user@example.com"
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                InfoRow(
+                    icon = Icons.Filled.DateRange,
+                    label = "Joined:",
+                    value = "April 2025"
+                )
+            }
+        }
+
+        // Computer Vision Stats Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
             )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    "Your Computer Vision Stats",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.Blue
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    StatItem(
+                        icon = Icons.Filled.Face,
+                        value = "24",
+                        label = "Scans"
+                    )
+
+                    StatItem(
+                        icon = Icons.Default.CheckCircle,
+                        value = "98%",
+                        label = "Accuracy"
+                    )
+
+                    StatItem(
+                        icon = Icons.Filled.Star,
+                        value = "Pro",
+                        label = "Level"
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = { showLogoutDialog = true },
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Red,
+                contentColor = Color.White
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = "Logout"
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Logout")
         }
     }
-    else {
-        var username by remember { mutableStateOf("") }
-        var gmail by remember { mutableStateOf("") }
-        var username2 by remember { mutableStateOf("") }
-        var password by remember { mutableStateOf("") }
-        var password2 by remember { mutableStateOf("") }
-        var statusMessage by remember { mutableStateOf("") }
-        var statusMessage2 by remember { mutableStateOf("") }
 
-        Column(
-            Modifier
-                .background(Color(1))
-                .fillMaxSize()
-                .padding(10.dp)
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Confirm Logout") },
+            text = { Text("Are you sure you want to logout from PerceptronX?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        // Implement logout API call
+                        retrofitClient.instance.logout().enqueue(object : Callback<Status> {
+                            override fun onResponse(call: Call<Status>, response: Response<Status>) {
+                                if (response.isSuccessful) {
+                                    // Handle successful logout
+                                    Log.d("API", "Logged out successfully")
+                                    // Use the stored context instead of LocalContext.current
+                                    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                                    prefs.edit().remove("session_cookie").apply()
+
+                                    // Call the logout success callback
+                                    onLogoutSuccess()
+                                } else {
+                                    Log.e("API", "Logout failed: ${response.errorBody()?.string()}")
+                                }
+                            }
+
+                            override fun onFailure(call: Call<Status>, t: Throwable) {
+                                Log.e("API", "Logout error: ${t.message}")
+                            }
+                        })
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+                    Text("Logout")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showLogoutDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.LightGray,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+@Composable
+fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            label,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun StatItem(icon: ImageVector, value: String, label: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            TextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Username") }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
             )
+        }
 
-            TextField(
-                value = gmail,
-                onValueChange = { gmail = it },
-                label = { Text("Gmail") }
-            )
+        Spacer(modifier = Modifier.height(4.dp))
 
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
-                visualTransformation = PasswordVisualTransformation()
-            )
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
 
-            Button(onClick = {
-                val call = retrofitClient.instance.registerUser(Register(username, gmail, password))
-                call.enqueue(object : Callback<Status> {
-                    override fun onResponse(call: Call<Status>, response: Response<Status>) {
-                        statusMessage = if (response.isSuccessful) {
-                            "Registered successfully!"
-                        } else {
-                            "Registration failed."
-                        }
-                    }
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
 
-                    override fun onFailure(call: Call<Status>, t: Throwable) {
-                        statusMessage = "Error: ${t.message}"
-                    }
-                })
-            }) {
-                Text("Register")
+@Composable
+fun LoginForm(
+    onSignUpClick: () -> Unit = {},
+    onForgotPasswordClick: () -> Unit = {},
+    onLoginSuccess: () -> Unit = {} // Navigation callback for successful login
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    rememberCoroutineScope()
+
+    val isUsernameValid = username.isNotEmpty()
+    val isPasswordValid = password.length >= 6
+    val isFormValid = isUsernameValid && isPasswordValid
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Login", style = MaterialTheme.typography.titleLarge)
+
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            isError = username.isNotEmpty() && !isUsernameValid,
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            isError = password.isNotEmpty() && !isPasswordValid,
+            singleLine = true
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it }
+                )
+                Text("Remember me")
             }
 
-            if (statusMessage.isNotEmpty()) {
-                Text(statusMessage, color = Color.Green)
-            }
-
-
-            Text(text = "Log in")
-            TextField(
-                value = username2,
-                onValueChange = {username2 = it},
-                label = {Text("Username")}
-            )
-            TextField(
-                value = password2,
-                onValueChange = {password2 = it},
-                label = {Text("Password")},
-                visualTransformation = PasswordVisualTransformation()
-            )
-            Button(onClick = {
-                val call = retrofitClient.instance.loginUser(Login(username, password))
-                call.enqueue(object : Callback<Status> {
-                    override fun onResponse(call: Call<Status>, response: Response<Status>) {
-                        statusMessage2 = if (response.isSuccessful) {
-                            "Logged in successfully!"
-                        } else {
-                            "Log in failed."
-                        }
-                    }
-
-                    override fun onFailure(call: Call<Status>, t: Throwable) {
-                        statusMessage2 = "Error: ${t.message}"
-                    }
-
-                })
-            }) {
-                Text("Login")
-            }
-            if (statusMessage2.isNotEmpty()) {
-                Text(statusMessage2, color = Color.Green)
+            TextButton(onClick = onForgotPasswordClick) {
+                Text("Forgot Password?")
             }
         }
+
+        Button(
+            onClick = {
+                isLoading = true
+                statusMessage = ""
+
+                val loginRequest = Login(
+                    username = username,
+                    password = password,
+                    remember_me = rememberMe
+                )
+
+                // Make the API call using your Retrofit service
+                retrofitClient.instance.loginUser(loginRequest).enqueue(object : Callback<Status> {
+                    override fun onResponse(call: Call<Status>, response: Response<Status>) {
+                        isLoading = false
+
+                        if (response.isSuccessful) {
+                            val responseBody = response.body()
+                            if (responseBody?.status == "valid") {
+                                // Store session cookie from response headers if needed
+                                val cookies = response.headers().values("Set-Cookie")
+                                val sessionCookie = cookies.firstOrNull { it.startsWith("session_id=") }
+
+                                if (sessionCookie != null) {
+                                    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                                    prefs.edit().putString("session_cookie", sessionCookie).apply()
+                                }
+
+                                Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess()
+                            } else {
+                                statusMessage = "Login failed: Invalid credentials"
+                            }
+                        } else {
+                            try {
+                                val errorBody = response.errorBody()?.string()
+                                val errorObj = Gson().fromJson(errorBody, ErrorResponse::class.java)
+                                statusMessage = errorObj?.detail ?: "Login failed: ${response.code()}"
+                            } catch (e: Exception) {
+                                statusMessage = "Login failed: ${response.code()}"
+                            }
+                        }
+                    }
+
+                    override fun onFailure(call: Call<Status>, t: Throwable) {
+                        isLoading = false
+                        statusMessage = "Connection error: ${t.localizedMessage}"
+                        Log.e("LoginForm", "API call failed", t)
+                    }
+                })
+            },
+            enabled = isFormValid && !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Login")
+            }
+        }
+
+        if (statusMessage.isNotEmpty()) {
+            Text(
+                text = statusMessage,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onSignUpClick) {
+            Text("Don't have an account? Sign up")
+        }
+    }
+}
+
+
+@Composable
+fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
+    var isLogin by remember { mutableStateOf(false) }
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    MaterialTheme.colorScheme.tertiary
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                color = Color.Transparent
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.9f)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(16.dp)
+                ),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier.size(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val rotation by infiniteTransition.animateFloat(
+                                initialValue = 0f,
+                                targetValue = 360f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(3000, easing = LinearEasing)
+                                ), label = ""
+                            )
+
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                rotate(rotation) {
+                                    for (i in 0 until 8) {
+                                        rotate(i * 45f) {
+                                            drawCircle(
+                                                color = lerp(primaryColor, secondaryColor, i / 8f),
+                                                radius = size.minDimension * 0.09f,
+                                                center = Offset(0f, -size.minDimension * 0.38f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Center logo
+                            Surface(
+                                modifier = Modifier.size(70.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                border = BorderStroke(
+                                    width = 3.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    // Use appropriate Computer Vision related icon
+                                    Icon(
+                                        imageVector = Icons.Filled.Build,
+                                        contentDescription = "PerceptronX Logo",
+                                        modifier = Modifier.size(40.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            "PerceptronX",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Text(
+                            "Computer Vision Platform",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+
+                TabRow(
+                    selectedTabIndex = if (isLogin) 1 else 0,
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .clip(RoundedCornerShape(50)),
+                    indicator = {},
+                    divider = {}
+                ) {
+                    Tab(
+                        selected = !isLogin,
+                        onClick = { isLogin = false },
+                        modifier = Modifier
+                            .background(
+                                color = if (!isLogin)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(
+                                    topStart = 50.dp,
+                                    bottomStart = 50.dp,
+                                    topEnd = 0.dp,
+                                    bottomEnd = 0.dp
+                                )
+                            )
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Sign Up",
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = if (!isLogin)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    Tab(
+                        selected = isLogin,
+                        onClick = { isLogin = true },
+                        modifier = Modifier
+                            .background(
+                                color = if (isLogin)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(
+                                    topStart = 0.dp,
+                                    bottomStart = 0.dp,
+                                    topEnd = 50.dp,
+                                    bottomEnd = 50.dp
+                                )
+                            )
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            "Login",
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = if (isLogin)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                AnimatedContent(
+                    targetState = isLogin,
+                    transitionSpec = {
+                        if (targetState) {
+                            (slideInHorizontally(initialOffsetX = { it }) + fadeIn()).togetherWith(
+                                slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()
+                            )
+                        } else {
+                            (slideInHorizontally(initialOffsetX = { -it }) + fadeIn()).togetherWith(
+                                slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                            )
+                        }
+                    }, label = ""
+                ) { isLoginState ->
+                    if (isLoginState) {
+                        LoginForm(
+                            onForgotPasswordClick = { showForgotPasswordDialog = true },
+                            onSignUpClick = { isLogin = false },
+                            onLoginSuccess = onLoginSuccess
+                        )
+                    } else {
+                        SignUpForm(
+                            onLoginClick = { isLogin = true }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    ForgotPasswordDialog(
+        isVisible = showForgotPasswordDialog,
+        onDismiss = { showForgotPasswordDialog = false },
+        onPasswordResetRequested = { email ->
+            // Implement password reset API call
+            val requestMap = mapOf("email" to email)
+            retrofitClient.instance.resetPassword(requestMap).enqueue(object : Callback<Status> {
+                override fun onResponse(call: Call<Status>, response: Response<Status>) {
+                    Log.d("API", "Password reset email sent")
+                    // In a real app, you would handle the response and show appropriate UI
+                }
+
+                override fun onFailure(call: Call<Status>, t: Throwable) {
+                    Log.e("API", "Password reset error: ${t.message}")
+                    // In a real app, you would handle the error and show appropriate UI
+                }
+            })
+        }
+    )
+}
+
+@Composable
+fun SignUpForm(
+    onLoginClick: () -> Unit = {}
+) {
+    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var statusMessage by remember { mutableStateOf("") }
+
+    val isUsernameValid = username.length >= 3
+    val isEmailValid = Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    val isPasswordValid = password.length >= 6
+    val doPasswordsMatch = password == confirmPassword
+    val isFormValid = isUsernameValid && isEmailValid && isPasswordValid && doPasswordsMatch && confirmPassword.isNotEmpty()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Create Account", style = MaterialTheme.typography.titleLarge)
+
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            isError = username.isNotEmpty() && !isUsernameValid,
+            supportingText = {
+                if (username.isNotEmpty() && !isUsernameValid) {
+                    Text("Username must be at least 3 characters")
+                }
+            },
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            isError = email.isNotEmpty() && !isEmailValid,
+            supportingText = {
+                if (email.isNotEmpty() && !isEmailValid) {
+                    Text("Please enter a valid email address")
+                }
+            },
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            isError = password.isNotEmpty() && !isPasswordValid,
+            supportingText = {
+                if (password.isNotEmpty() && !isPasswordValid) {
+                    Text("Password must be at least 6 characters")
+                }
+            },
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            isError = confirmPassword.isNotEmpty() && !doPasswordsMatch,
+            supportingText = {
+                if (confirmPassword.isNotEmpty() && !doPasswordsMatch) {
+                    Text("Passwords do not match")
+                }
+            },
+            singleLine = true
+        )
+
+        Button(
+            onClick = {
+                isLoading = true
+                statusMessage = ""
+
+                // Create register request
+                val registerRequest = Register(
+                    username = username,
+                    email = email,
+                    password = password
+                )
+
+                // Make API call
+                retrofitClient.instance.registerUser(registerRequest).enqueue(object : Callback<Status> {
+                    override fun onResponse(call: Call<Status>, response: Response<Status>) {
+                        isLoading = false  // Important: always set loading to false
+
+                        if (response.isSuccessful) {
+                            statusMessage = "Registration successful! Please log in."
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                onLoginClick()
+                            }, 2000)
+                        } else {
+                            try {
+                                val errorBody = response.errorBody()?.string()
+                                val errorObj = Gson().fromJson(errorBody, ErrorResponse::class.java)
+                                statusMessage = errorObj?.detail ?: "Registration failed: ${response.code()}"
+                            } catch (e: Exception) {
+                                statusMessage = "Registration failed: ${response.code()}"
+                            }
+                        }
+                    }
+
+                    override fun onFailure(call: Call<Status>, t: Throwable) {
+                        isLoading = false  // Important: always set loading to false
+                        statusMessage = "Connection error: ${t.localizedMessage}"
+                        Log.e("SignUpForm", "API call failed", t)
+                    }
+                })
+            },
+            enabled = isFormValid && !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Create Account")
+            }
+        }
+
+        if (statusMessage.isNotEmpty()) {
+            Text(
+                text = statusMessage,
+                color = if (statusMessage.contains("successful"))
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onLoginClick) {
+            Text("Already have an account? Login")
+        }
+    }
+}
+
+@Composable
+fun ForgotPasswordDialog(
+    isVisible: Boolean,
+    onDismiss: () -> Unit,
+    onPasswordResetRequested: (String) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var isEmailValid by remember { mutableStateOf(false) }
+
+    if (isVisible) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    "Reset Password",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        "Enter your email address and we'll send you a link to reset your password.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            isEmailValid = Patterns.EMAIL_ADDRESS.matcher(email).matches()
+                        },
+                        label = { Text("Email Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = "Email",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        isError = email.isNotEmpty() && !isEmailValid,
+                        supportingText = {
+                            if (email.isNotEmpty() && !isEmailValid) {
+                                Text("Please enter a valid email address")
+                            }
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (isEmailValid) {
+                            onPasswordResetRequested(email)
+                            onDismiss()
+                        }
+                    },
+                    enabled = isEmailValid
+                ) {
+                    Text("Send Reset Link")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -401,83 +1294,96 @@ fun BottomNavigationBar(navController: NavController) {
 @Composable
 fun NavigationGraph() {
     val navController = rememberNavController()
-    var status by remember { mutableStateOf<String?>("valid") }
+    var status by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(key1 = Unit) {
-        retrofitClient.instance.getStatus().enqueue(object : Callback<Status> {
-            override fun onResponse(call: Call<Status>, response: Response<Status>) {
-                if (response.isSuccessful) {
-                    status = response.body()?.status
-                    Log.d("API", "Status received: $status")
-                } else {
-                    Log.e("API", "Error: ${response.errorBody()?.string()}")
-                }
-            }
-
-            override fun onFailure(call: Call<Status>, t: Throwable) {
-                Log.e("API", "Failure: ${t.message}")
-            }
-        })
+        try {
+            val response = retrofitClient.instance.getStatus()
+            status = response.status
+            Log.d("API", "Status received: $status")
+        } catch (e: Exception) {
+            status = "invalid"
+            Log.e("API", "Failure: ${e.message}")
+        } finally {
+            isLoading = false
+        }
     }
 
-    Scaffold(
-        bottomBar = { BottomNavigationBar(navController) }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = if(status == "valid") "main" else "profile"
+    if (isLoading) {
+        LoadingScreen()
+    } else {
+        Scaffold(
+            bottomBar = { BottomNavigationBar(navController) }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                composable(
-                    "main",
-                    enterTransition = {
-                        slideInHorizontally(initialOffsetX = { -it }) + fadeIn()
-                    },
-                    exitTransition = {
-                        slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()
-                    }
+                NavHost(
+                    navController = navController,
+                    startDestination = if (status == "valid") "main" else "profile"
                 ) {
-                    MainScreen()
-                }
-                composable(
-                    "dashboard",
-                    enterTransition = {
-                        slideInHorizontally(initialOffsetX = { it }) + fadeIn()
-                    },
-                    exitTransition = {
-                        slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                    composable(
+                        "main",
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { -it }) + fadeIn()
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()
+                        }
+                    ) {
+                        MainScreen()
                     }
-                ) {
-                    Dashboard()
-                }
-                composable(
-                    "activity",
-                    enterTransition = {
-                        slideInHorizontally(initialOffsetX = { it }) + fadeIn()
-                    },
-                    exitTransition = {
-                        slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                    composable(
+                        "dashboard",
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { it }) + fadeIn()
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                        }
+                    ) {
+                        Dashboard()
                     }
-                ) {
-                    Activity()
-                }
-                composable(
-                    "profile",
-                    enterTransition = {
-                        slideInHorizontally(initialOffsetX = { it }) + fadeIn()
-                    },
-                    exitTransition = {
-                        slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                    composable(
+                        "activity",
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { it }) + fadeIn()
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                        }
+                    ) {
+                        Activity()
                     }
-                ) {
-                    Profile()
+                    composable(
+                        "profile",
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { it }) + fadeIn()
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+                        }
+                    ) {
+                        Profile(
+                            onAuthStateChanged = { newStatus ->
+                                status = newStatus
+                                if (newStatus == "valid") {
+                                    navController.navigate("main") {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
-

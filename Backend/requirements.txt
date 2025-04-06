@@ -14,3 +14,4 @@ motor
 python-multipart 
 itsdangerous 
 starlette-session
+user_agents

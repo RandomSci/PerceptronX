@@ -1,10 +1,13 @@
-from fastapi import APIRouter
-from fastapi import FastAPI, Response, Request, Depends, Form
+from dependencies.session import get_current_user
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import APIRouter, FastAPI, Response, Depends, Form, HTTPException
 from pydantic import BaseModel
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path as FilePath
 from fastapi import *
 from ultralytics import YOLO
 import cv2
@@ -12,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 from torch_snippets import *
-
+import user_agents
 
 class Register(BaseModel):
     username: str
@@ -22,6 +25,7 @@ class Register(BaseModel):
 class Login(BaseModel):
     username: str
     password: str
+    remember_me: bool = False
 
 def serialize_document(doc):
     """Convert MongoDB document to a JSON-serializable format"""

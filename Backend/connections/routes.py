@@ -321,7 +321,6 @@ def Routes():
             stored_password = therapist["password"]
 
             if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-                # Create session
                 session_id = await create_session(
                     user_id=therapist["id"],
                     email=therapist["company_email"],
@@ -360,7 +359,36 @@ def Routes():
         finally:
             cursor.close()
             db.close()
+            
+    def get_local_ip():
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
 
+    @app.get("/qr")
+    async def generate_qr_code():
+        ip = get_local_ip()
+        port = 8000
+
+        server_address = f"http://{ip}:{port}/"
+
+        print(f"[QR] Generating QR code with server address: {server_address}")
+
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(server_address)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf)
+        buf.seek(0)
+
+        return StreamingResponse(buf, media_type="image/png")
+    
     if __name__ == "__main__":
-        import uvicorn
         uvicorn.run(app, host="0.0.0.0", port=8000)

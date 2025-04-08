@@ -3,24 +3,17 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import APIRouter, FastAPI, Response, Depends, Form, HTTPException, status
 from pydantic import BaseModel
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path as FilePath
-import bcrypt
 from fastapi import *
 from ultralytics import YOLO
 from typing import Optional, Dict
-import cv2
-import matplotlib.pyplot as plt
-import pandas as pd
-import torch
 from torch_snippets import *
-import user_agents
-import datetime
-import secrets
-
+import cv2, matplotlib.pyplot as plt, pandas as pd, torch, bcrypt, user_agents, datetime
+import uvicorn, secrets, qrcode, io, socket
 class Register(BaseModel):
     username: str
     email: str

@@ -11,7 +11,7 @@ class PlatformRoutingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
         self.web_redirects = {
-            "/": "/front-page",
+            "/": "/Therapist_Login",
             # "/mobile-page": "/web-page",
             # "/app": "/webapp",
         }
@@ -59,7 +59,6 @@ else:
 
 app.include_router(router)
 
-# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -85,7 +84,51 @@ def Routes():
     
     @app.get("/front-page")
     async def front_page(request: Request):
-        return templates.TemplateResponse("dist/dashboard/index.html", {"request": request})
+        session_id = request.cookies.get("session_id")
+        print(f"Session ID from cookie: {session_id}")
+
+        if not session_id:
+            print("No session ID found in cookie")
+            return RedirectResponse(url="/Therapist_Login")
+
+        try:
+            session_data = await get_session_data(session_id)
+            print(f"Session data retrieved: {session_data}")
+
+            if not session_data:
+                print("Session data is None")
+                return RedirectResponse(url="/Therapist_Login")
+
+            db = get_Mysql_db()
+            cursor = db.cursor(dictionary=True)
+
+            try:
+                cursor.execute(
+                    "SELECT first_name, last_name FROM Therapists WHERE id = %s", 
+                    (session_data.user_id,)
+                )
+                therapist = cursor.fetchone()
+                print(f"Therapist data: {therapist}")
+
+                if not therapist:
+                    print(f"No therapist found for ID: {session_data.user_id}")
+                    return RedirectResponse(url="/Therapist_Login")
+
+                print("Rendering index.html template")
+                return templates.TemplateResponse(
+                    "dist/dashboard/index.html", 
+                    {
+                        "request": request,
+                        "first_name": therapist["first_name"],
+                        "last_name": therapist["last_name"]
+                    }
+                )
+            finally:
+                cursor.close()
+                db.close()
+        except Exception as e:
+            print(f"Error in front-page route: {e}")
+            return RedirectResponse(url="/Therapist_Login")
 
     @app.get("/dashboard")
     async def dashboard(user = Depends(get_current_user)):
@@ -111,13 +154,45 @@ def Routes():
             cursor.close()
             db.close()
             
-    # TODO: Implement a user register for web
-    @app.get("/Register_User_Web")
+    @app.route("/Register_User_Web", methods=["GET", "POST"])
     async def Register_User_Web(request: Request):
-        return templates.TemplateResponse("dist/pages/register.html", {"request": request})
+        form = await request.form()
+        first_name = form.get("first_name")
+        last_name = form.get("last_name")
+        company_email = form.get("company_email")
+        password = form.get("password")
+
+        if not all([first_name, last_name, company_email, password]):
+            return templates.TemplateResponse("dist/pages/register.html", {
+                "request": request,
+                "error": "All fields are required."
+            })
+
+        db = get_Mysql_db()
+        cursor = db.cursor()
+
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
+        try:
+            cursor.execute(
+                "INSERT INTO Therapists (first_name, last_name, company_email, password) VALUES (%s, %s, %s, %s)",
+                (first_name, last_name, company_email, hashed_password.decode("utf-8"))
+            )
+            db.commit()
+            return RedirectResponse(url="/", status_code=303)
+        except mysql.connector.IntegrityError:
+            return templates.TemplateResponse("dist/pages/register.html", {
+                "request": request,
+                "error": "Therapist with this email already exists."
+            })
+        finally:
+            cursor.close()
+            db.close()
+
+    active_sessions: Dict[str, SessionData] = {}
 
     @app.post("/loginUser")
-    async def loginUser(result: Login):
+    async def loginUser(result: Login, response: Response):
         db = get_Mysql_db()
         cursor = db.cursor()
 
@@ -135,19 +210,29 @@ def Routes():
 
             if bcrypt.checkpw(result.password.encode("utf-8"), stored_password_hash):
                 session_id = await create_session(
-                    {"user_id": str(user_id), "username": result.username},
-                    remember_me=result.remember_me
+                    user_id=user_id, 
+                    email=result.username,
+                    remember=result.remember_me
                 )
-                response = JSONResponse(content={"status": "valid"})
-                response.set_cookie(key="session_id", value=session_id, httponly=True)
-                print(f"response: {response}")
-                return response
+
+                max_age = 30 * 24 * 60 * 60 if result.remember_me else None 
+                response.set_cookie(
+                    key="session_id", 
+                    value=session_id, 
+                    httponly=True,
+                    max_age=max_age,
+                    samesite="lax",
+                    path="/"
+                )
+                print("response 152", response)
+
+                return {"status": "valid"}
             else:
                 raise HTTPException(status_code=401, detail="Invalid username or password")
         finally:
             cursor.close()
             db.close()
-            
+
     @app.post("/logout")
     async def logout(request: Request):
         session_id = request.cookies.get("session_id")
@@ -159,17 +244,122 @@ def Routes():
         response.delete_cookie("session_id")
         return response
     
-    @app.get("/logout_web")
-    async def logout_web(request: Request):
+    @app.get("/logout")
+    async def logout_get(request: Request):
         session_id = request.cookies.get("session_id")
-
         if session_id:
             await delete_session(session_id)
-
-        response = JSONResponse(content={"message": "Logged out"})
+        response = RedirectResponse(url="/Therapist_Login")
         response.delete_cookie("session_id")
+        return response
+
+    async def create_session(user_id: int, email: str, remember: bool = False) -> str:
+        session_id = secrets.token_hex(16)
+
+        if remember:
+            expires = datetime.datetime.now() + datetime.timedelta(days=30)
+        else:
+            expires = datetime.datetime.now() + datetime.timedelta(hours=24)
+
+        active_sessions[session_id] = SessionData(
+            user_id=user_id,
+            email=email,
+            expires=expires
+        )
+
+        return session_id
+
+    async def delete_session(session_id: str) -> None:
+        if session_id in active_sessions:
+            del active_sessions[session_id]
+
+    async def get_session_data(session_id: str) -> Optional[SessionData]:
+        session = active_sessions.get(session_id)
+
+        if not session:
+            return None
+
+        if session.expires < datetime.datetime.now():
+            await delete_session(session_id)
+            return None
+
+        return session
+
+    @app.get("/Therapist_Login")
+    async def therapist_login_page(request: Request):
+        session_id = request.cookies.get("session_id")
+        if session_id:
+            session = await get_session_data(session_id)
+            if session:
+                return RedirectResponse(url="/front-page")
+
         return templates.TemplateResponse("dist/pages/login.html", {"request": request})
 
+    @app.post("/Therapist_Login")
+    async def therapist_login(
+        request: Request,
+        email: str = Form(...),
+        password: str = Form(...),
+        remember: bool = Form(False)
+    ):
+        db = get_Mysql_db()
+        cursor = db.cursor(dictionary=True)
+
+        try:
+            cursor.execute(
+                "SELECT id, company_email, password, first_name, last_name FROM Therapists WHERE company_email = %s", 
+                (email,)
+            )
+            therapist = cursor.fetchone()
+
+            if not therapist:
+                return templates.TemplateResponse(
+                    "dist/pages/login.html", 
+                    {"request": request, "error": "Invalid email or password"}
+                )
+
+            stored_password = therapist["password"]
+
+            if bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
+                # Create session
+                session_id = await create_session(
+                    user_id=therapist["id"],
+                    email=therapist["company_email"],
+                    remember=remember
+                )
+
+                print(f"Session created: {session_id}")
+                print(f"User ID: {therapist['id']}")
+
+                response = RedirectResponse(url="/front-page", status_code=303)
+
+                max_age = 30 * 24 * 60 * 60 if remember else 24 * 60 * 60
+
+                response.set_cookie(
+                    key="session_id",
+                    value=session_id,
+                    max_age=max_age,
+                    httponly=True,
+                    # secure=True,  # Commented out for testing - enable in production
+                    samesite="lax"
+                )
+
+                print(f"Response created with cookie: {response.headers}")
+                return response
+            else:
+                return templates.TemplateResponse(
+                    "dist/pages/login.html", 
+                    {"request": request, "error": "Invalid email or password"}
+                )
+        except Exception as e:
+            print(f"Login error: {e}")
+            return templates.TemplateResponse(
+                "dist/pages/login.html", 
+                {"request": request, "error": f"Server error: {str(e)}"}
+            )
+        finally:
+            cursor.close()
+            db.close()
 
     if __name__ == "__main__":
         import uvicorn

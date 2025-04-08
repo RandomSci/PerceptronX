@@ -246,21 +246,25 @@ fun Dashboard() {
 }
 
 @Composable
-fun Profile(onAuthStateChanged: (String) -> Unit = {}) {
-    var status by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+fun Profile(initialStatus: String? = null, onAuthStateChanged: (String) -> Unit = {}) {
+    var status by remember { mutableStateOf(initialStatus) }
+    var isLoading by remember { mutableStateOf(initialStatus == null) }
 
     LaunchedEffect(Unit) {
-        try {
-            val response = retrofitClient.instance.getStatus()
-            status = response.status
-            Log.d("API", "Status received: $status")
-            status?.let { onAuthStateChanged(it) }
-        } catch (e: Exception) {
-            status = "invalid"
-            Log.e("API", "Failure: ${e.message}")
-            onAuthStateChanged("invalid")
-        } finally {
+        if (initialStatus == null) {
+            try {
+                val response = retrofitClient.instance.getStatus()
+                status = response.status
+                Log.d("API", "Status received: $status")
+                status?.let { onAuthStateChanged(it) }
+            } catch (e: Exception) {
+                status = "invalid"
+                Log.e("API", "Failure: ${e.message}")
+                onAuthStateChanged("invalid")
+            } finally {
+                isLoading = false
+            }
+        } else {
             isLoading = false
         }
     }
@@ -336,9 +340,8 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 size.minDimension / 2
                 val strokeWidth = size.minDimension * 0.05f
 
-                val primaryColor = Color.Green // Replace with a color of your choice
+                val primaryColor = Color.Green
 
-                // Drawing the arc directly
                 drawArc(
                     color = primaryColor,
                     startAngle = 0f,
@@ -348,7 +351,6 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 )
             }
 
-            // Profile image
             Surface(
                 modifier = Modifier.size(120.dp),
                 shape = CircleShape,
@@ -368,7 +370,6 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // User info card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -410,7 +411,7 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 InfoRow(
                     icon = Icons.Default.Person,
                     label = "Username:",
-                    value = "User123"
+                    value = "User123" /*TODO: Call this later using the session! We need to extract the correct data from the database*/
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -418,7 +419,7 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 InfoRow(
                     icon = Icons.Default.Email,
                     label = "Email:",
-                    value = "user@example.com"
+                    value = "user@example.com" /*TODO: Call this later using the session! We need to extract the correct data from the database*/
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -426,7 +427,7 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 InfoRow(
                     icon = Icons.Filled.DateRange,
                     label = "Joined:",
-                    value = "April 2025"
+                    value = "April 2025" /*TODO: Call this later using the session! We need to extract the correct data from the database*/
                 )
             }
         }
@@ -624,7 +625,7 @@ fun StatItem(icon: ImageVector, value: String, label: String) {
 fun LoginForm(
     onSignUpClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
-    onLoginSuccess: () -> Unit = {} // Navigation callback for successful login
+    onLoginSuccess: () -> Unit = {}
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -703,7 +704,6 @@ fun LoginForm(
                     remember_me = rememberMe
                 )
 
-                // Make the API call using your Retrofit service
                 retrofitClient.instance.loginUser(loginRequest).enqueue(object : Callback<Status> {
                     override fun onResponse(call: Call<Status>, response: Response<Status>) {
                         isLoading = false
@@ -711,7 +711,6 @@ fun LoginForm(
                         if (response.isSuccessful) {
                             val responseBody = response.body()
                             if (responseBody?.status == "valid") {
-                                // Store session cookie from response headers if needed
                                 val cookies = response.headers().values("Set-Cookie")
                                 val sessionCookie = cookies.firstOrNull { it.startsWith("session_id=") }
 
@@ -1106,8 +1105,6 @@ fun SignUpForm(
                     email = email,
                     password = password
                 )
-
-                // Make API call
                 retrofitClient.instance.registerUser(registerRequest).enqueue(object : Callback<Status> {
                     override fun onResponse(call: Call<Status>, response: Response<Status>) {
                         isLoading = false  // Important: always set loading to false
@@ -1358,16 +1355,9 @@ fun NavigationGraph() {
                     ) {
                         Activity()
                     }
-                    composable(
-                        "profile",
-                        enterTransition = {
-                            slideInHorizontally(initialOffsetX = { it }) + fadeIn()
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
-                        }
-                    ) {
+                    composable("profile") {
                         Profile(
+                            initialStatus = status,  // Pass the current status to avoid unnecessary API calls
                             onAuthStateChanged = { newStatus ->
                                 status = newStatus
                                 if (newStatus == "valid") {

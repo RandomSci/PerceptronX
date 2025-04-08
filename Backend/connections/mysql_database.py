@@ -2,8 +2,6 @@ import bcrypt
 import mysql.connector
 from connections.functions import *
 
-#collection = get_Mongo_db("annotations")
-#res = collection.find()
 
 def get_Mysql_db(): #Mysql
     return mysql.connector.connect(
@@ -25,7 +23,6 @@ def Register_User_Web(first_name, last_name, company_email, password):
         if cursor.fetchone()[0] > 0:
             raise HTTPException(status_code=400, detail="Username or email already exists.")
 
-        # Insert the new user into the database
         cursor.execute(
             "INSERT INTO Therapists (first_name, last_name, company_email, password) VALUES (%s, %s, %s)",
             (first_name, last_name, company_email, hashed_password.decode("utf-8"))

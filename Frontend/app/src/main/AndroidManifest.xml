@@ -9,7 +9,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/resource_new"
-        android:label="PerceptronX"
+        android:label="APR-CV"
         android:roundIcon="@drawable/resource_new"
         android:supportsRtl="true"
         android:theme="@style/Theme.PercentronX"

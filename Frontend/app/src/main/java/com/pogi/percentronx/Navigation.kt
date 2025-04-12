@@ -7,7 +7,6 @@ import android.util.Log
 import android.util.Patterns
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -63,7 +62,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -94,10 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import com.google.accompanist.navigation.animation.composable
 import com.google.gson.Gson
 import retrofit2.Call
 import retrofit2.Callback
@@ -142,7 +137,7 @@ fun MainScreen() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Welcome to PerceptronX",
+                    "Welcome to APR-CV",
                     style = MaterialTheme.typography.titleLarge
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -185,61 +180,6 @@ fun Activity() {
                 Text("Your recent activities will appear here", style = MaterialTheme.typography.bodyLarge)
 
                 Text("SAMPLE TEXT")
-            }
-        }
-    }
-}
-
-@Composable
-fun Dashboard() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            "Dashboard Screen",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.secondary
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(8.dp)
-                    .height(100.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Stats", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(8.dp)
-                    .height(100.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                )
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Reports", style = MaterialTheme.typography.titleMedium)
-                }
             }
         }
     }
@@ -302,7 +242,7 @@ fun LoadingScreen() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "Loading PerceptronX...",
+                "Loading APR-CV...",
                 style = MaterialTheme.typography.titleMedium
             )
         }
@@ -313,6 +253,23 @@ fun LoadingScreen() {
 fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var userData by remember { mutableStateOf<User_Data?>(null) }
+
+    LaunchedEffect(Unit) {
+        retrofitClient.instance.getUserInfo().enqueue(object : Callback<User_Data> {
+            override fun onResponse(call: Call<User_Data>, response: Response<User_Data>) {
+                if (response.isSuccessful) {
+                    userData = response.body()
+                } else {
+                    Log.e("API", "Failed to fetch user info: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<User_Data>, t: Throwable) {
+                Log.e("API", "Network error: ${t.message}")
+            }
+        })
+    }
 
     Column(
         modifier = Modifier
@@ -411,7 +368,7 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 InfoRow(
                     icon = Icons.Default.Person,
                     label = "Username:",
-                    value = "User123" /*TODO: Call this later using the session! We need to extract the correct data from the database*/
+                    value = userData?.username ?: "Loading..."
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -419,7 +376,7 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 InfoRow(
                     icon = Icons.Default.Email,
                     label = "Email:",
-                    value = "user@example.com" /*TODO: Call this later using the session! We need to extract the correct data from the database*/
+                    value = userData?.email ?: "Loading..."
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -427,12 +384,11 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 InfoRow(
                     icon = Icons.Filled.DateRange,
                     label = "Joined:",
-                    value = "April 2025" /*TODO: Call this later using the session! We need to extract the correct data from the database*/
+                    value = userData?.joined ?: "Loading..."
                 )
             }
         }
 
-        // Computer Vision Stats Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -503,7 +459,7 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Confirm Logout") },
-            text = { Text("Are you sure you want to logout from PerceptronX?") },
+            text = { Text("Are you sure you want to logout from APR-CV?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -551,6 +507,8 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
         )
     }
 }
+
+
 @Composable
 fun InfoRow(icon: ImageVector, label: String, value: String) {
     Row(
@@ -860,7 +818,7 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
                                     // Use appropriate Computer Vision related icon
                                     Icon(
                                         imageVector = Icons.Filled.Build,
-                                        contentDescription = "PerceptronX Logo",
+                                        contentDescription = "APR-CV Logo",
                                         modifier = Modifier.size(40.dp),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
@@ -871,7 +829,7 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            "PerceptronX",
+                            "APR-CV",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -1286,94 +1244,3 @@ fun BottomNavigationBar(navController: NavController) {
     }
 }
 
-@Suppress("DEPRECATION")
-@OptIn(ExperimentalAnimationApi::class)
-@Composable
-fun NavigationGraph() {
-    val navController = rememberNavController()
-    var status by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(key1 = Unit) {
-        try {
-            val response = retrofitClient.instance.getStatus()
-            status = response.status
-            Log.d("API", "Status received: $status")
-        } catch (e: Exception) {
-            status = "invalid"
-            Log.e("API", "Failure: ${e.message}")
-        } finally {
-            isLoading = false
-        }
-    }
-
-    if (isLoading) {
-        LoadingScreen()
-    } else {
-        Scaffold(
-            bottomBar = { BottomNavigationBar(navController) }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = if (status == "valid") "main" else "profile"
-                ) {
-                    composable(
-                        "main",
-                        enterTransition = {
-                            slideInHorizontally(initialOffsetX = { -it }) + fadeIn()
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()
-                        }
-                    ) {
-                        MainScreen()
-                    }
-                    composable(
-                        "dashboard",
-                        enterTransition = {
-                            slideInHorizontally(initialOffsetX = { it }) + fadeIn()
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
-                        }
-                    ) {
-                        Dashboard()
-                    }
-                    composable(
-                        "activity",
-                        enterTransition = {
-                            slideInHorizontally(initialOffsetX = { it }) + fadeIn()
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
-                        }
-                    ) {
-                        Activity()
-                    }
-                    composable("profile") {
-                        Profile(
-                            initialStatus = status,  // Pass the current status to avoid unnecessary API calls
-                            onAuthStateChanged = { newStatus ->
-                                status = newStatus
-                                if (newStatus == "valid") {
-                                    navController.navigate("main") {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}

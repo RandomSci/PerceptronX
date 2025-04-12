@@ -15,5 +15,7 @@ python-multipart
 itsdangerous 
 starlette-session
 user_agents
-pip install qrcode[pil]
+qrcode[pil]
 socket
+ultralytics
+torch_snippets

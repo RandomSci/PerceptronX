@@ -1,7 +1,7 @@
 from dependencies.session import get_current_user
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import APIRouter, FastAPI, Response, Depends, Form, HTTPException, status
+from fastapi import APIRouter, FastAPI, Response, Depends, Form, HTTPException, status, File, UploadFile
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse, HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -13,7 +13,23 @@ from ultralytics import YOLO
 from typing import Optional, Dict
 from torch_snippets import *
 import cv2, matplotlib.pyplot as plt, pandas as pd, torch, bcrypt, user_agents, datetime
-import uvicorn, secrets, qrcode, io, socket
+from datetime import timedelta
+from contextlib import asynccontextmanager
+import uvicorn, secrets, qrcode, io, socket, time
+class AppointmentRequest(BaseModel):
+    therapistId: int
+    date: str
+    time: str
+    type: str
+    notes: Optional[str] = None
+    insuranceProvider: Optional[str] = None
+    insuranceMemberId: Optional[str] = None
+
+class MessageRequest(BaseModel):
+    recipient_id: int
+    recipient_type: str = "therapist"
+    subject: str
+    content: str
 class Register(BaseModel):
     username: str
     email: str
@@ -33,6 +49,11 @@ class SessionData(BaseModel):
     user_id: int
     email: str
     expires: datetime.datetime
+
+class User_Data(BaseModel):
+    username: str
+    email: str
+    joined: str
 
 async def create_session(user_id: int, email: str, remember: bool = False) -> str:
     session_id = secrets.token_hex(16)

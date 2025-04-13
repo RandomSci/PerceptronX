@@ -116,7 +116,7 @@ def Routes():
             db = get_Mysql_db()
             cursor = db.cursor(dictionary=True)
             try:
-                # Get therapist data
+ 
                 cursor.execute(
                     "SELECT first_name, last_name FROM Therapists WHERE id = %s", 
                     (session_data["user_id"],)
@@ -127,7 +127,7 @@ def Routes():
                     print(f"No therapist found for ID: {session_data['user_id']}")
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Get recent unread messages for the therapist
+ 
                 cursor.execute(
                     """SELECT m.message_id, m.subject, m.content, m.created_at, 
                             t.first_name, t.last_name, COALESCE(t.profile_image, 'avatar-1.jpg') as profile_image
@@ -140,12 +140,12 @@ def Routes():
                 )
                 messages_result = cursor.fetchall()
 
-                # Process messages to add formatted timestamps
+ 
                 recent_messages = []
                 for message in messages_result:
                     message_with_time = message.copy()
 
-                    # Format timestamp
+ 
                     timestamp = message['created_at']
                     now = datetime.datetime.now()
                     if isinstance(timestamp, datetime.datetime):
@@ -169,7 +169,7 @@ def Routes():
 
                     recent_messages.append(message_with_time)
 
-                # Get count of all unread messages
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -177,7 +177,7 @@ def Routes():
                 unread_count_result = cursor.fetchone()
                 unread_messages_count = unread_count_result['count'] if unread_count_result else 0
 
-                # Get total appointments count
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Appointments WHERE therapist_id = %s", 
                     (session_data["user_id"],)
@@ -185,7 +185,7 @@ def Routes():
                 appointments_result = cursor.fetchone()
                 appointments_count = appointments_result['count'] if appointments_result else 0
 
-                # Get appointments from last month
+ 
                 last_month = datetime.datetime.now() - timedelta(days=30)
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Appointments WHERE therapist_id = %s AND created_at < %s", 
@@ -194,11 +194,11 @@ def Routes():
                 last_month_appointments = cursor.fetchone()
                 last_month_count = last_month_appointments['count'] if last_month_appointments else 0
 
-                # Calculate growth
+ 
                 appointments_monthly_diff = appointments_count - last_month_count
                 appointments_growth = round((appointments_monthly_diff / max(last_month_count, 1)) * 100, 1)
 
-                # Get active patients count
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Patients WHERE therapist_id = %s AND status = 'Active'", 
                     (session_data["user_id"],)
@@ -206,7 +206,7 @@ def Routes():
                 active_patients_result = cursor.fetchone()
                 active_patients_count = active_patients_result['count'] if active_patients_result else 0
 
-                # Get new patients this month
+ 
                 this_month_start = datetime.datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Patients WHERE therapist_id = %s AND created_at >= %s", 
@@ -215,7 +215,7 @@ def Routes():
                 new_patients_result = cursor.fetchone()
                 new_patients_monthly = new_patients_result['count'] if new_patients_result else 0
 
-                # Calculate patient growth
+ 
                 last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Patients WHERE therapist_id = %s AND created_at BETWEEN %s AND %s", 
@@ -225,7 +225,7 @@ def Routes():
                 last_month_new_count = last_month_new_patients['count'] if last_month_new_patients else 1
                 patient_growth = round((new_patients_monthly / max(last_month_new_count, 1)) * 100, 1)
 
-                # Get treatment plans count
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM TreatmentPlans WHERE therapist_id = %s", 
                     (session_data["user_id"],)
@@ -233,7 +233,7 @@ def Routes():
                 treatment_plans_result = cursor.fetchone()
                 treatment_plans_count = treatment_plans_result['count'] if treatment_plans_result else 0
 
-                # Get new treatment plans this month
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM TreatmentPlans WHERE therapist_id = %s AND created_at >= %s", 
                     (session_data["user_id"], this_month_start)
@@ -241,7 +241,7 @@ def Routes():
                 new_plans_result = cursor.fetchone()
                 new_plans_monthly = new_plans_result['count'] if new_plans_result else 0
 
-                # Get last month plans for growth calculation
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM TreatmentPlans WHERE therapist_id = %s AND created_at BETWEEN %s AND %s", 
                     (session_data["user_id"], last_month_start, this_month_start)
@@ -250,7 +250,7 @@ def Routes():
                 last_month_plans_count = last_month_plans['count'] if last_month_plans else 1
                 plans_growth = round((new_plans_monthly / max(last_month_plans_count, 1)) * 100, 1)
 
-                # Get patient adherence rate
+ 
                 cursor.execute(
                     "SELECT AVG(adherence_rate) as avg_rate FROM PatientMetrics WHERE therapist_id = %s", 
                     (session_data["user_id"],)
@@ -258,7 +258,7 @@ def Routes():
                 adherence_result = cursor.fetchone()
                 average_adherence_rate = round(adherence_result['avg_rate'], 1) if adherence_result and adherence_result['avg_rate'] is not None else 0
 
-                # Get last month's adherence rate
+ 
                 cursor.execute(
                     """SELECT AVG(adherence_rate) as avg_rate 
                     FROM PatientMetrics 
@@ -268,7 +268,7 @@ def Routes():
                 last_month_adherence = cursor.fetchone()
                 last_month_adherence_rate = last_month_adherence['avg_rate'] if last_month_adherence and last_month_adherence['avg_rate'] is not None else 0
 
-                # Calculate adherence change and set direction
+ 
                 adherence_monthly_diff = round(average_adherence_rate - last_month_adherence_rate, 1)
                 adherence_change = abs(adherence_monthly_diff)
 
@@ -297,7 +297,7 @@ def Routes():
                 completion_result = cursor.fetchone()
                 weekly_completion_rate = round(completion_result['completion_rate'], 0) if completion_result and completion_result['completion_rate'] is not None else 0
 
-                # Get recent patients with their adherence rates
+ 
                 cursor.execute(
                     """SELECT p.patient_id, p.first_name, p.last_name, p.diagnosis, p.status,
                         COALESCE(AVG(pm.adherence_rate), 0) as adherence_rate
@@ -311,7 +311,7 @@ def Routes():
                 )
                 recent_patients_result = cursor.fetchall()
 
-                # Process recent patients to add status colors
+ 
                 recent_patients = []
                 for patient in recent_patients_result:
                     status_color = "success"
@@ -325,7 +325,7 @@ def Routes():
                     patient_with_color['adherence_rate'] = round(patient['adherence_rate'], 0)
                     recent_patients.append(patient_with_color)
 
-                # Get therapy metrics
+ 
                 cursor.execute(
                     "SELECT AVG(recovery_progress) as avg_recovery FROM PatientMetrics WHERE therapist_id = %s", 
                     (session_data["user_id"],)
@@ -333,7 +333,7 @@ def Routes():
                 recovery_result = cursor.fetchone()
                 avg_recovery_rate = round(recovery_result['avg_recovery'], 1) if recovery_result and recovery_result['avg_recovery'] is not None else 0
 
-                # Calculate overall exercise completion rate
+ 
                 cursor.execute(
                     """SELECT AVG(
                         CASE 
@@ -347,7 +347,7 @@ def Routes():
                 overall_completion = cursor.fetchone()
                 exercise_completion_rate = round(overall_completion['completion_rate'], 1) if overall_completion and overall_completion['completion_rate'] is not None else 0
 
-                # Calculate patient satisfaction from feedback
+ 
                 cursor.execute(
                     "SELECT AVG(rating) as avg_rating FROM feedback"
                 )
@@ -361,7 +361,7 @@ def Routes():
                 else:
                     patient_satisfaction = "Low"
 
-                # Get progress metric value (using functionality score as an example)
+ 
                 cursor.execute(
                     "SELECT AVG(functionality_score) as avg_score FROM PatientMetrics WHERE therapist_id = %s", 
                     (session_data["user_id"],)
@@ -369,7 +369,7 @@ def Routes():
                 progress_result = cursor.fetchone()
                 progress_metric_value = progress_result['avg_score'] if progress_result and progress_result['avg_score'] is not None else 0
 
-                # Get recent activities
+ 
                 cursor.execute(
                     """(SELECT 'video' as type, 'New Exercise Uploaded' as title, e.name as primary_detail, 
                         CONCAT(e.duration, ' min') as secondary_detail, e.created_at as timestamp,
@@ -404,12 +404,12 @@ def Routes():
                 )
                 activities_result = cursor.fetchall()
 
-                # Process recent activities
+ 
                 recent_activities = []
                 for activity in activities_result:
                     activity_with_color = activity.copy()
 
-                    # Set color based on activity type
+ 
                     if activity['type'] == 'video':
                         activity_with_color['color'] = 'success'
                         activity_with_color['icon'] = 'video'
@@ -420,7 +420,7 @@ def Routes():
                         activity_with_color['color'] = 'warning'
                         activity_with_color['icon'] = 'report-medical'
 
-                    # Format timestamp
+ 
                     timestamp = activity['timestamp']
                     now = datetime.datetime.now()
                     if isinstance(timestamp, datetime.datetime):
@@ -433,7 +433,7 @@ def Routes():
 
                     recent_activities.append(activity_with_color)
 
-                # Get weekly activity data for chart
+ 
                 cursor.execute(
                     """SELECT 
                         DATE_FORMAT(completion_date, '%a') as day, 
@@ -445,7 +445,7 @@ def Routes():
                 )
                 weekly_activity = cursor.fetchall()
 
-                # Format the data for chart
+ 
                 days_of_week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                 activity_data = {day: 0 for day in days_of_week}
 
@@ -481,7 +481,7 @@ def Routes():
                 progress_chart_data = cursor.fetchall()
                 progress_data = [{'date': record['date'], 'score': float(record['score']) if record['score'] is not None else 0} for record in progress_chart_data]
 
-                # Get exercise completion breakdown for the donut chart
+ 
                 cursor.execute(
                     """SELECT 
                         CASE 
@@ -511,7 +511,7 @@ def Routes():
                     if record['status'] in donut_data:
                         donut_data[record['status']] = record['count']
 
-                # Render the dashboard template with all the data
+ 
                 print("Rendering dashboard template with dynamic data")
                 return templates.TemplateResponse(
                     "dist/dashboard/index.html", 
@@ -574,7 +574,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapist data
+ 
                 cursor.execute(
                     "SELECT first_name, last_name FROM Therapists WHERE id = %s", 
                     (session_data["user_id"],)
@@ -583,7 +583,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Build search condition if search parameter is provided
+ 
                 search_condition = ""
                 search_params = []
                 if search:
@@ -598,7 +598,7 @@ def Routes():
                     search_term = f"%{search}%"
                     search_params = [search_term, search_term, search_term, search_term]
 
-                # Get inbox messages (received)
+ 
                 inbox_query = f"""
                     SELECT 
                         m.message_id, m.subject, m.content, m.created_at, m.is_read,
@@ -631,7 +631,7 @@ def Routes():
                 cursor.execute(inbox_query, inbox_params)
                 inbox_messages = cursor.fetchall()
 
-                # Get sent messages
+ 
                 sent_query = f"""
                     SELECT 
                         m.message_id, m.subject, m.content, m.created_at, m.is_read,
@@ -664,10 +664,10 @@ def Routes():
                 cursor.execute(sent_query, sent_params)
                 sent_messages = cursor.fetchall()
 
-                # Process messages to add formatted timestamps
+ 
                 for messages_list in [inbox_messages, sent_messages]:
                     for message in messages_list:
-                        # Format timestamp
+ 
                         timestamp = message['created_at']
                         now = datetime.datetime.now()
                         if isinstance(timestamp, datetime.datetime):
@@ -690,32 +690,32 @@ def Routes():
                                 message['formatted_date'] = timestamp.strftime('%d %b')
                                 message['time_ago'] = timestamp.strftime('%Y')
 
-                        # Truncate content for preview
+ 
                         if message['content'] and len(message['content']) > 100:
                             message['short_content'] = message['content'][:100] + '...'
                         else:
                             message['short_content'] = message['content']
 
-                # Get all therapists for the compose message form
+ 
                 cursor.execute(
                     "SELECT id, first_name, last_name FROM Therapists WHERE id != %s",
                     (session_data["user_id"],)
                 )
                 therapists = cursor.fetchall()
 
-                # Get all patients
+ 
                 cursor.execute(
                     "SELECT patient_id, first_name, last_name FROM Patients"
                 )
                 patients = cursor.fetchall()
 
-                # Get all regular users
+ 
                 cursor.execute(
                     "SELECT user_id, username FROM users"
                 )
                 users = cursor.fetchall()
 
-                # Get count of unread messages
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -765,7 +765,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapist data
+ 
                 cursor.execute(
                     "SELECT first_name, last_name FROM Therapists WHERE id = %s", 
                     (session_data["user_id"],)
@@ -774,7 +774,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Get message details with enhanced query to support different sender/recipient types
+ 
                 cursor.execute(
                     """SELECT 
                         m.message_id, m.subject, m.content, m.created_at, m.is_read,
@@ -812,10 +812,10 @@ def Routes():
                 message = cursor.fetchone()
 
                 if not message:
-                    # Message not found or not accessible to this user
+ 
                     return RedirectResponse(url="/messages")
 
-                # Mark as read if recipient is viewing
+ 
                 if message['recipient_id'] == int(session_data["user_id"]) and message['recipient_type'] == 'therapist' and not message['is_read']:
                     cursor.execute(
                         "UPDATE Messages SET is_read = TRUE WHERE message_id = %s",
@@ -823,7 +823,7 @@ def Routes():
                     )
                     db.commit()
 
-                # Format timestamp
+ 
                 timestamp = message['created_at']
                 if isinstance(timestamp, datetime.datetime):
                     now = datetime.datetime.now()
@@ -834,10 +834,10 @@ def Routes():
                     else:
                         message['formatted_date'] = timestamp.strftime('%b %d, %Y at %I:%M %p')
 
-                # Set message direction
+ 
                 message['direction'] = 'received' if message['recipient_id'] == int(session_data["user_id"]) and message['recipient_type'] == 'therapist' else 'sent'
 
-                # Get count of unread messages (for header notification)
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -883,7 +883,7 @@ def Routes():
             subject = form_data.get("subject")
             content = form_data.get("content")
 
-            # Validate input
+ 
             if not recipient_type or not recipient_id or not content:
                 return {"success": False, "message": "Recipient and message content are required"}
 
@@ -891,7 +891,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Check if recipient exists based on recipient type
+ 
                 recipient_exists = False
 
                 if recipient_type == "therapist":
@@ -919,7 +919,7 @@ def Routes():
                 if not recipient_exists:
                     return {"success": False, "message": "Recipient not found"}
 
-                # Insert the message with sender and recipient type information
+ 
                 cursor.execute(
                     """INSERT INTO Messages 
                         (sender_id, sender_type, recipient_id, recipient_type, subject, content) 
@@ -928,7 +928,7 @@ def Routes():
                 )
                 db.commit()
 
-                # Get the message ID for redirection
+ 
                 new_message_id = cursor.lastrowid
 
                 return {"success": True, "message_id": new_message_id}
@@ -957,7 +957,7 @@ def Routes():
             form_data = await request.form()
             content = form_data.get("content")
 
-            # Validate input
+ 
             if not content:
                 return {"success": False, "message": "Message content is required"}
 
@@ -965,7 +965,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get original message with sender/recipient type information
+ 
                 cursor.execute(
                     """SELECT sender_id, recipient_id, subject, sender_type, recipient_type
                         FROM Messages 
@@ -979,7 +979,7 @@ def Routes():
                 if not original_message:
                     return {"success": False, "message": "Original message not found"}
 
-                # Determine recipient for reply
+ 
                 if int(original_message['recipient_id']) == int(session_data["user_id"]) and original_message['recipient_type'] == 'therapist':
                     reply_to_id = original_message['sender_id']
                     reply_to_type = original_message['sender_type']
@@ -987,12 +987,12 @@ def Routes():
                     reply_to_id = original_message['recipient_id']
                     reply_to_type = original_message['recipient_type']
 
-                # Format subject for reply
+ 
                 subject = original_message['subject']
                 if not subject.startswith("Re:"):
                     subject = f"Re: {subject}"
 
-                # Insert the reply
+ 
                 cursor.execute(
                     """INSERT INTO Messages 
                         (sender_id, sender_type, recipient_id, recipient_type, subject, content) 
@@ -1001,7 +1001,7 @@ def Routes():
                 )
                 db.commit()
 
-                # Get the message ID for redirection
+ 
                 new_message_id = cursor.lastrowid
 
                 return {"success": True, "message_id": new_message_id}
@@ -1031,7 +1031,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Check if the message belongs to the user before deleting
+ 
                 cursor.execute(
                     """SELECT message_id 
                        FROM Messages 
@@ -1045,7 +1045,7 @@ def Routes():
                 if not message:
                     return {"success": False, "message": "Message not found or you don't have permission to delete it"}
 
-                # Delete the message
+ 
                 cursor.execute(
                     "DELETE FROM Messages WHERE message_id = %s",
                     (message_id,)
@@ -1125,7 +1125,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Convert JSON stored fields to Python objects
+ 
                 for field in ['specialties', 'education', 'languages']:
                     if therapist[field] and isinstance(therapist[field], str):
                         try:
@@ -1135,7 +1135,7 @@ def Routes():
                     elif therapist[field] is None:
                         therapist[field] = []
 
-                # Get count of unread messages (for header notification)
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -1143,7 +1143,7 @@ def Routes():
                 unread_count_result = cursor.fetchone()
                 unread_messages_count = unread_count_result['count'] if unread_count_result else 0
 
-                # Get recent patients
+ 
                 cursor.execute(
                     """SELECT patient_id, first_name, last_name, diagnosis, status 
                     FROM Patients 
@@ -1154,7 +1154,7 @@ def Routes():
                 )
                 recent_patients = cursor.fetchall()
 
-                # Get total patient count
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Patients WHERE therapist_id = %s",
                     (session_data["user_id"],)
@@ -1162,7 +1162,7 @@ def Routes():
                 total_patients_result = cursor.fetchone()
                 total_patients = total_patients_result['count'] if total_patients_result else 0
 
-                # Get review summary
+ 
                 cursor.execute(
                     """SELECT AVG(rating) as average_rating, COUNT(*) as review_count 
                     FROM Reviews 
@@ -1177,7 +1177,7 @@ def Routes():
                     average_rating = 0
                     review_count = 0
 
-                # Get recent reviews
+ 
                 cursor.execute(
                     """SELECT r.review_id, r.rating, r.comment, r.created_at, 
                             p.first_name, p.last_name
@@ -1240,7 +1240,7 @@ def Routes():
                     content={"error": "Therapist not found"}
                 )
 
-            # Convert JSON stored fields to Python objects
+ 
             for field in ['specialties', 'education', 'languages']:
                 if therapist[field] and isinstance(therapist[field], str):
                     try:
@@ -1250,7 +1250,7 @@ def Routes():
                 elif therapist[field] is None:
                     therapist[field] = []
 
-            # Create a clean response without any sensitive data
+ 
             response_data = {
                 "id": therapist["id"],
                 "name": f"{therapist['first_name']} {therapist['last_name']}",
@@ -1291,7 +1291,7 @@ def Routes():
             db = get_Mysql_db()
             cursor = db.cursor(dictionary=True)
             try:
-                # Get therapist data - excluding latitude/longitude
+ 
                 cursor.execute(
                     """SELECT id, first_name, last_name, company_email, profile_image, 
                             bio, experience_years, specialties, education, languages, 
@@ -1305,7 +1305,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
                     
-                # Convert JSON stored fields to Python objects
+ 
                 for field in ['specialties', 'education', 'languages']:
                     if therapist[field] and isinstance(therapist[field], str):
                         try:
@@ -1315,7 +1315,7 @@ def Routes():
                     elif therapist[field] is None:
                         therapist[field] = []
                         
-                # Get count of unread messages
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -1323,7 +1323,7 @@ def Routes():
                 unread_count_result = cursor.fetchone()
                 unread_messages_count = unread_count_result['count'] if unread_count_result else 0
                 
-                # Get all specialties for dropdown options
+ 
                 all_specialties = get_all_specialties()
                 existing_specialties = therapist["specialties"] if therapist["specialties"] else []
                 
@@ -1365,10 +1365,10 @@ def Routes():
             if not session_data:
                 return RedirectResponse(url="/Therapist_Login", status_code=303)
                 
-            # Get all form data manually
+ 
             form_data = await request.form()
             
-            # Extract basic text fields
+ 
             profile_data = {
                 "first_name": form_data.get("first_name", ""),
                 "last_name": form_data.get("last_name", ""),
@@ -1377,7 +1377,7 @@ def Routes():
                 "address": form_data.get("address", "")
             }
             
-            # Handle numeric fields
+ 
             try:
                 profile_data["experience_years"] = int(form_data.get("experience_years", "0"))
             except ValueError:
@@ -1398,10 +1398,10 @@ def Routes():
             except ValueError:
                 profile_data["average_session_length"] = 60
                 
-            # Handle boolean fields
+ 
             profile_data["is_accepting_new_patients"] = form_data.get("is_accepting_new_patients") == "1"
             
-            # Process JSON fields
+ 
             specialties = form_data.getlist("specialties")
             if specialties:
                 profile_data["specialties"] = json.dumps(specialties)
@@ -1420,36 +1420,36 @@ def Routes():
             else:
                 profile_data["languages"] = "[]"
             
-            # Process profile image if provided
+ 
             profile_image_filename = None
             
-            # Check if there's a file in the form data
+ 
             profile_image = form_data.get("profile_image")
 
-            # Only process if it's an actual file upload, not just an empty field
+ 
             if profile_image and hasattr(profile_image, "filename") and profile_image.filename:
                 try:
-                    # Read file content
+ 
                     contents = await profile_image.read()
                     
                     if contents and len(contents) > 0:
-                        # Validate file type
+ 
                         file_extension = profile_image.filename.split(".")[-1].lower()
                         allowed_extensions = ["jpg", "jpeg", "png", "gif"]
                         
                         if file_extension in allowed_extensions:
-                            # Generate unique filename
+ 
                             profile_image_filename = f"therapist_{session_data['user_id']}_{int(time.time())}.{file_extension}"
                             
-                            # Define paths consistently - use absolute paths
+ 
                             current_file = FilePath(__file__).resolve()
                             project_root = current_file.parent.parent.parent
                             uploads_dir = project_root / "Frontend_Web" / "static" / "assets" / "images" / "user"
                             
-                            # Ensure directory exists
+ 
                             uploads_dir.mkdir(parents=True, exist_ok=True)
                             
-                            # Save file using absolute path
+ 
                             file_path = uploads_dir / profile_image_filename
                             with open(file_path, "wb") as f:
                                 f.write(contents)
@@ -1462,47 +1462,47 @@ def Routes():
                         print("Empty file content")
                 except Exception as img_error:
                     print(f"Error processing image: {img_error}")
-                    # Continue with the rest of the update even if image processing fails
+ 
             
-            # Update database
+ 
             db = get_Mysql_db()
             cursor = None
             try:
                 cursor = db.cursor()
                 
-                # Prepare SQL query
+ 
                 update_fields = []
                 params = []
                 
-                # Add all text and numeric fields
+ 
                 for field in profile_data:
                     update_fields.append(f"{field} = %s")
                     params.append(profile_data[field])
                 
-                # Add profile image if uploaded
+ 
                 if profile_image_filename:
                     update_fields.append("profile_image = %s")
                     params.append(profile_image_filename)
                 
-                # Add WHERE clause parameter
+ 
                 params.append(session_data["user_id"])
                 
-                # Execute update
+ 
                 query = f"UPDATE Therapists SET {', '.join(update_fields)} WHERE id = %s"
                 cursor.execute(query, params)
                 
-                # Commit changes
+ 
                 db.commit()
                 print("Profile updated successfully")
                 
-                # Redirect to profile page
+ 
                 return RedirectResponse(url="/profile", status_code=303)
             except Exception as db_error:
                 print(f"Database error: {db_error}")
                 if db:
                     db.rollback()
                 
-                # Return to edit page with error
+ 
                 return RedirectResponse(url="/profile/edit", status_code=303)
             finally:
                 if cursor:
@@ -1515,7 +1515,7 @@ def Routes():
             return RedirectResponse(url="/Therapist_Login", status_code=303)
 
 
-    # Helper functions to reduce duplication and improve organization
+ 
 
     async def get_therapist_data(db, user_id):
         """Retrieve therapist data from database"""
@@ -1532,7 +1532,7 @@ def Routes():
             )
             therapist = cursor.fetchone()
             
-            # Process JSON fields
+ 
             for field in ['specialties', 'education', 'languages']:
                 if therapist[field] and isinstance(therapist[field], str):
                     try:
@@ -1615,7 +1615,7 @@ def Routes():
                         content={"error": "Therapist not found"}
                     )
 
-                # Convert JSON stored fields to Python objects
+ 
                 for field in ['specialties', 'education', 'languages']:
                     if therapist[field] and isinstance(therapist[field], str):
                         try:
@@ -1625,7 +1625,7 @@ def Routes():
                     elif therapist[field] is None:
                         therapist[field] = []
 
-                # Create a clean response without any sensitive data
+ 
                 response_data = {
                     "id": therapist["id"],
                     "name": f"{therapist['first_name']} {therapist['last_name']}",
@@ -1664,7 +1664,7 @@ def Routes():
         cursor = db.cursor(dictionary=True)
 
         try:
-            # Get reviews for this therapist
+ 
             cursor.execute(
                 """SELECT r.review_id, r.rating, r.comment, r.created_at, 
                          p.patient_id, p.first_name, p.last_name
@@ -1677,7 +1677,7 @@ def Routes():
             )
             reviews = cursor.fetchall()
 
-            # Get total count and average rating
+ 
             cursor.execute(
                 """SELECT COUNT(*) as total, AVG(rating) as average_rating
                    FROM Reviews
@@ -1686,7 +1686,7 @@ def Routes():
             )
             stats = cursor.fetchone()
 
-            # Format the response
+ 
             formatted_reviews = []
             for review in reviews:
                 formatted_reviews.append({
@@ -1743,14 +1743,14 @@ def Routes():
                     content={"error": "Not authenticated"}
                 )
 
-            # Verify that the patient belongs to the therapist or user has admin rights
-            # This is a simplified check - you'd want more robust verification
+ 
+ 
 
             db = get_Mysql_db()
             cursor = db.cursor()
 
             try:
-                # Check if patient already submitted a review for this therapist
+ 
                 cursor.execute(
                     """SELECT review_id FROM Reviews 
                        WHERE therapist_id = %s AND patient_id = %s""", 
@@ -1759,7 +1759,7 @@ def Routes():
                 existing_review = cursor.fetchone()
 
                 if existing_review:
-                    # Update existing review
+ 
                     cursor.execute(
                         """UPDATE Reviews 
                            SET rating = %s, comment = %s, updated_at = NOW() 
@@ -1770,7 +1770,7 @@ def Routes():
 
                     return {"message": "Review updated successfully", "review_id": existing_review[0]}
                 else:
-                    # Create new review
+ 
                     cursor.execute(
                         """INSERT INTO Reviews (therapist_id, patient_id, rating, comment)
                            VALUES (%s, %s, %s, %s)""", 
@@ -1812,7 +1812,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapist data
+ 
                 cursor.execute(
                     """SELECT id, first_name, last_name, company_email, profile_image, 
                             rating, review_count
@@ -1825,7 +1825,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Get all reviews for the therapist
+ 
                 cursor.execute(
                     """SELECT r.review_id, r.rating, r.comment, r.created_at, 
                              p.patient_id, p.first_name, p.last_name
@@ -1837,7 +1837,7 @@ def Routes():
                 )
                 reviews = cursor.fetchall()
 
-                # Get count of unread messages (for header notification)
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -1845,12 +1845,12 @@ def Routes():
                 unread_count_result = cursor.fetchone()
                 unread_messages_count = unread_count_result['count'] if unread_count_result else 0
 
-                # Process reviews to add formatted dates
+ 
                 for review in reviews:
                     if isinstance(review['created_at'], datetime.datetime):
                         review['formatted_date'] = review['created_at'].strftime('%B %d, %Y')
 
-                # Calculate rating distribution
+ 
                 rating_distribution = {
                     5: 0,
                     4: 0,
@@ -1867,7 +1867,7 @@ def Routes():
                         rating = 5
                     rating_distribution[rating] += 1
 
-                # Calculate percentages for rating distribution
+ 
                 total_reviews = len(reviews)
                 rating_percentages = {}
                 for rating, count in rating_distribution.items():
@@ -1920,7 +1920,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Check if the review exists and belongs to the therapist
+ 
                 cursor.execute(
                     """SELECT review_id 
                        FROM Reviews 
@@ -1932,7 +1932,7 @@ def Routes():
                 if not review:
                     return JSONResponse(status_code=404, content={"success": False, "message": "Review not found"})
 
-                # Add or update reply to the review
+ 
                 cursor.execute(
                     """UPDATE Reviews 
                        SET therapist_reply = %s, 
@@ -1959,7 +1959,7 @@ def Routes():
         return {"message": f"Welcome, {user['username']}!", "user_id": user["user_id"]}
 
     @app.post("/registerUser")
-    async def registerUser(result: Register): # Mysql 
+    async def registerUser(result: Register): 
         db = get_Mysql_db()
         cursor = db.cursor()
     
@@ -2234,7 +2234,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapist data
+ 
                 cursor.execute(
                     """SELECT id, first_name, last_name, profile_image
                     FROM Therapists 
@@ -2246,7 +2246,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Get list of patients for the therapist
+ 
                 cursor.execute(
                     """SELECT patient_id, first_name, last_name, diagnosis, status
                     FROM Patients 
@@ -2256,7 +2256,7 @@ def Routes():
                 )
                 patients = cursor.fetchall()
 
-                # Get count of unread messages for header notification
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -2302,7 +2302,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapist data
+ 
                 cursor.execute(
                     """SELECT id, first_name, last_name, profile_image
                     FROM Therapists 
@@ -2314,7 +2314,7 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
-                # Get patient details and verify this patient belongs to the therapist
+ 
                 cursor.execute(
                     """SELECT * FROM Patients 
                     WHERE patient_id = %s AND therapist_id = %s""",
@@ -2325,7 +2325,7 @@ def Routes():
                 if not patient:
                     return RedirectResponse(url="/reports/patients")
 
-                # Get patient exercise history
+ 
                 cursor.execute(
                     """SELECT pep.*, tpe.sets, tpe.repetitions,
                             e.name as exercise_name, e.video_url, e.difficulty
@@ -2339,7 +2339,7 @@ def Routes():
                 )
                 exercise_history = cursor.fetchall()
 
-                # Get patient treatment plans
+ 
                 cursor.execute(
                     """SELECT * FROM TreatmentPlans
                     WHERE patient_id = %s
@@ -2348,7 +2348,7 @@ def Routes():
                 )
                 treatment_plans = cursor.fetchall()
 
-                # Get patient metrics/progress
+ 
                 cursor.execute(
                     """SELECT * FROM PatientMetrics
                     WHERE patient_id = %s
@@ -2357,7 +2357,7 @@ def Routes():
                 )
                 patient_metrics = cursor.fetchall()
 
-                # Get patient reviews/feedback
+ 
                 cursor.execute(
                     """SELECT * FROM feedback
                     WHERE patient_id = %s
@@ -2366,7 +2366,7 @@ def Routes():
                 )
                 patient_feedback = cursor.fetchall()
 
-                # Get count of unread messages (for header notification)
+ 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -2417,7 +2417,7 @@ def Routes():
             if not session_data:
                 return JSONResponse(status_code=401, content={"success": False, "message": "Not authenticated"})
 
-            # Validate rating
+ 
             if rating < 1 or rating > 5:
                 return JSONResponse(status_code=400, content={"success": False, "message": "Rating must be between 1 and 5"})
 
@@ -2425,7 +2425,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # First verify that this progress entry exists and is associated with one of the therapist's patients
+ 
                 cursor.execute(
                     """SELECT pep.progress_id 
                     FROM PatientExerciseProgress pep
@@ -2440,7 +2440,7 @@ def Routes():
                 if not progress:
                     return JSONResponse(status_code=404, content={"success": False, "message": "Exercise progress not found"})
 
-                # Update the rating in the database
+ 
                 cursor.execute(
                     """UPDATE PatientExerciseProgress 
                     SET therapist_rating = %s, therapist_feedback = %s
@@ -2871,17 +2871,17 @@ def Routes():
             cursor.close()
             db.close()
             
-    # Part 1: Add this debug endpoint to verify image paths
+ 
     @app.get("/debug/image-paths")
     async def debug_image_paths():
         """Debug endpoint to check image paths and accessibility"""
         import os
         from fastapi.staticfiles import StaticFiles
         
-        # Get the actual static directory path
+ 
         static_dir = app.static_directory if hasattr(app, 'static_directory') else "/home/zkllmt/Documents/AI_Section/Android_Projects/PerceptronX/Frontend_Web/static"
         
-        # List of paths to check
+ 
         paths_to_check = [
             "/static/assets/images/user",
             "/Frontend_Web/static/assets/images/user",
@@ -2891,7 +2891,7 @@ def Routes():
         
         results = {}
         
-        # Check if directories exist
+ 
         for path in paths_to_check:
             full_path = os.path.join(static_dir, path.lstrip('/'))
             results[path] = {
@@ -2901,11 +2901,11 @@ def Routes():
             }
             
             if results[path]["exists"] and results[path]["is_dir"]:
-                # List files in directory
+ 
                 files = os.listdir(full_path)
-                results[path]["files"] = files[:10]  # List first 10 files
+                results[path]["files"] = files[:10] 
         
-        # Check how static files are mounted
+ 
         static_mounts = []
         for route in app.routes:
             if isinstance(route, StaticFiles):
@@ -2920,7 +2920,7 @@ def Routes():
             "static_mounts": static_mounts
         }
 
-    # Part 2: Modified therapist endpoints with correct URL handling
+ 
     @app.get("/therapists")
     async def get_therapists():
         """API endpoint to get a list of all therapists for the mobile app"""
@@ -2929,7 +2929,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapists with basic information for list view
+ 
                 cursor.execute(
                     """SELECT id, first_name, last_name, profile_image, 
                             specialties, address, rating, review_count, 
@@ -2940,17 +2940,17 @@ def Routes():
                 )
                 therapists = cursor.fetchall()
 
-                # Define the base URL for photos
-                # Make sure this IP matches your local network IP where the server is running
+ 
+ 
                 base_url = app.state.base_url
                 
-                # Log for debugging
+ 
                 print(f"Using base URL: {base_url}")
                 
-                # Format the response for the mobile app
+ 
                 formatted_therapists = []
                 for therapist in therapists:
-                    # Convert specialties JSON to list
+ 
                     specialties = []
                     if therapist['specialties'] and isinstance(therapist['specialties'], str):
                         try:
@@ -2958,15 +2958,15 @@ def Routes():
                         except:
                             specialties = []
                     
-                    # Determine image URL - try both approaches
+ 
                     profile_image = therapist['profile_image'] or "avatar-1.jpg"
-                    # Direct URL to static file
+ 
                     photoUrl = f"{base_url}/static/assets/images/user/{profile_image}"
                     
-                    # Print debug info
+ 
                     print(f"Therapist ID: {therapist['id']}, Image: {profile_image}, URL: {photoUrl}")
 
-                    # Format as TherapistListItem
+ 
                     formatted_therapists.append({
                         "id": therapist["id"],
                         "name": f"{therapist['first_name']} {therapist['last_name']}",
@@ -2975,8 +2975,8 @@ def Routes():
                         "location": therapist["address"] or "Location not provided",
                         "rating": float(therapist["rating"] or 0),
                         "reviewCount": therapist["review_count"] or 0,
-                        "distance": 0.0,  # Placeholder, would need geolocation calculation
-                        "nextAvailable": "Today"  # Placeholder, could be calculated from appointments
+                        "distance": 0.0, 
+                        "nextAvailable": "Today" 
                     })
 
                 return formatted_therapists
@@ -3005,7 +3005,6 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get therapist full details
                 cursor.execute(
                     """SELECT id, first_name, last_name, profile_image, 
                             bio, experience_years, specialties, education, languages, 
@@ -3023,7 +3022,7 @@ def Routes():
                         content={"error": "Therapist not found"}
                     )
 
-                # Convert JSON stored fields to Python objects
+ 
                 for field in ['specialties', 'education', 'languages']:
                     if therapist[field] and isinstance(therapist[field], str):
                         try:
@@ -3033,17 +3032,17 @@ def Routes():
                     elif therapist[field] is None:
                         therapist[field] = []
                         
-                # Define the base URL for photos
+ 
                 base_url = app.state.base_url
                 
-                # Determine image URL
+ 
                 profile_image = therapist['profile_image'] or "avatar-1.jpg"
                 photoUrl = f"{base_url}/static/assets/images/user/{profile_image}"
                 
-                # Print debug info
+ 
                 print(f"Therapist detail ID: {therapist['id']}, Image: {profile_image}, URL: {photoUrl}")
 
-                # Format as Therapist object for the app
+ 
                 formatted_therapist = {
                     "id": therapist["id"],
                     "name": f"{therapist['first_name']} {therapist['last_name']}",
@@ -3082,7 +3081,7 @@ def Routes():
     async def get_therapist_availability(id: int, date: str = None):
         """API endpoint to get available time slots for a therapist"""
         try:
-            # If date is not provided, use today's date
+ 
             if not date:
                 date = datetime.datetime.now().strftime("%Y-%m-%d")
             
@@ -3090,7 +3089,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Verify therapist exists
+ 
                 cursor.execute(
                     "SELECT id, average_session_length FROM Therapists WHERE id = %s",
                     (id,)
@@ -3103,7 +3102,7 @@ def Routes():
                         content={"error": "Therapist not found"}
                     )
                 
-                # Get all appointments for the therapist on the specified date
+ 
                 cursor.execute(
                     """SELECT appointment_time, duration 
                     FROM Appointments 
@@ -3113,14 +3112,14 @@ def Routes():
                 )
                 booked_slots = cursor.fetchall()
                 
-                # Define the business hours (e.g., 9 AM to 5 PM)
+ 
                 start_hour = 9
                 end_hour = 17
                 
-                # Default appointment duration in minutes
+ 
                 slot_duration = therapist['average_session_length'] or 60
                 
-                # Generate all possible time slots
+ 
                 available_slots = []
                 current_time = datetime.time(start_hour, 0)
                 end_time = datetime.time(end_hour, 0)
@@ -3130,7 +3129,7 @@ def Routes():
                     slot_end = (datetime.datetime.combine(datetime.date.today(), current_time) + 
                             datetime.timedelta(minutes=slot_duration)).time()
                     
-                    # Check if this slot overlaps with any booked appointment
+ 
                     is_available = True
                     for booked in booked_slots:
                         booked_start = booked['appointment_time']
@@ -3138,12 +3137,12 @@ def Routes():
                                     datetime.timedelta(minutes=booked['duration']))
                         booked_end = booked_end_dt.time()
                         
-                        # Check for overlap
+ 
                         if (current_time < booked_end and slot_end > booked_start):
                             is_available = False
                             break
                     
-                    # Format time for display
+ 
                     formatted_time = current_time.strftime("%I:%M %p")
                     
                     available_slots.append({
@@ -3155,7 +3154,7 @@ def Routes():
                     
                     slot_id += 1
                     
-                    # Move to the next slot (e.g., in 30-minute increments)
+ 
                     current_time_dt = datetime.datetime.combine(datetime.date.today(), current_time)
                     current_time_dt += datetime.timedelta(minutes=30)
                     current_time = current_time_dt.time()
@@ -3202,7 +3201,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Check if therapist exists
+ 
                 cursor.execute(
                     "SELECT id FROM Therapists WHERE id = %s",
                     (appointment_request.therapist_id,)
@@ -3215,7 +3214,7 @@ def Routes():
                         content={"status": "invalid", "detail": "Therapist not found"}
                     )
                 
-                # Get or create patient record for this user
+ 
                 cursor.execute(
                     "SELECT patient_id FROM Patients WHERE user_id = %s",
                     (user_id,)
@@ -3226,7 +3225,7 @@ def Routes():
                 if patient_record:
                     patient_id = patient_record[0]
                 else:
-                    # Get user info
+ 
                     cursor.execute(
                         "SELECT username, email FROM users WHERE user_id = %s",
                         (user_id,)
@@ -3239,7 +3238,7 @@ def Routes():
                             content={"status": "invalid", "detail": "User not found"}
                         )
                     
-                    # Create patient record
+ 
                     cursor.execute(
                         """INSERT INTO Patients 
                         (therapist_id, user_id, first_name, last_name, email) 
@@ -3249,17 +3248,17 @@ def Routes():
                     db.commit()
                     patient_id = cursor.lastrowid
                 
-                # Parse time string (assuming format like "10:00 AM")
+ 
                 time_parts = appointment_request.time.split()
-                time_str = time_parts[0]  # "10:00"
-                am_pm = time_parts[1] if len(time_parts) > 1 else "AM"  # "AM" or "PM"
+                time_str = time_parts[0] 
+                am_pm = time_parts[1] if len(time_parts) > 1 else "AM" 
                 
                 time_obj = datetime.datetime.strptime(f"{time_str} {am_pm}", "%I:%M %p").time()
                 
-                # Set appointment duration (default to 60 minutes)
+ 
                 duration = 60
                 
-                # Add notes with combined information
+ 
                 full_notes = f"Type: {appointment_request.type}\n"
                 if appointment_request.notes:
                     full_notes += f"Notes: {appointment_request.notes}\n"
@@ -3268,7 +3267,7 @@ def Routes():
                 if appointment_request.insuranceMemberId:
                     full_notes += f"Member ID: {appointment_request.insuranceMemberId}"
                 
-                # Create appointment
+ 
                 cursor.execute(
                     """INSERT INTO Appointments 
                     (patient_id, therapist_id, appointment_date, appointment_time, duration, notes, status) 
@@ -3278,7 +3277,7 @@ def Routes():
                 )
                 db.commit()
                 
-                # Send notification message to therapist
+ 
                 cursor.execute(
                     """INSERT INTO Messages
                     (sender_id, sender_type, recipient_id, recipient_type, subject, content)
@@ -3332,7 +3331,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Verify recipient exists
+ 
                 cursor.execute(
                     "SELECT id FROM Therapists WHERE id = %s",
                     (message_request.recipient_id,)
@@ -3345,7 +3344,7 @@ def Routes():
                         content={"status": "invalid", "detail": "Recipient not found"}
                     )
                 
-                # Insert the message
+ 
                 cursor.execute(
                     """INSERT INTO Messages 
                     (sender_id, sender_type, recipient_id, recipient_type, subject, content) 
@@ -3398,7 +3397,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Verify therapist exists
+ 
                 cursor.execute(
                     "SELECT id FROM Therapists WHERE id = %s",
                     (id,)
@@ -3411,7 +3410,7 @@ def Routes():
                         content={"status": "invalid", "detail": "Therapist not found"}
                     )
                 
-                # Check if patient record already exists
+ 
                 cursor.execute(
                     "SELECT patient_id FROM Patients WHERE user_id = %s",
                     (user_id,)
@@ -3419,7 +3418,7 @@ def Routes():
                 existing_patient = cursor.fetchone()
                 
                 if existing_patient:
-                    # Update existing patient record
+ 
                     cursor.execute(
                         """UPDATE Patients 
                         SET therapist_id = %s,
@@ -3433,7 +3432,7 @@ def Routes():
                         patient.get('phone', ''), patient.get('diagnosis', ''), user_id)
                     )
                 else:
-                    # Get user email from users table
+ 
                     cursor.execute(
                         "SELECT email FROM users WHERE user_id = %s",
                         (user_id,)
@@ -3441,7 +3440,7 @@ def Routes():
                     user_email = cursor.fetchone()
                     email = user_email[0] if user_email else ''
                     
-                    # Create new patient record
+ 
                     cursor.execute(
                         """INSERT INTO Patients 
                         (therapist_id, user_id, first_name, last_name, email, phone, diagnosis) 
@@ -3495,7 +3494,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get patient ID for this user
+ 
                 cursor.execute(
                     "SELECT patient_id FROM Patients WHERE user_id = %s",
                     (user_id,)
@@ -3503,12 +3502,12 @@ def Routes():
                 patient_record = cursor.fetchone()
                 
                 if not patient_record:
-                    # No appointments since user is not a patient yet
+ 
                     return []
                 
                 patient_id = patient_record['patient_id']
                 
-                # Get all appointments for this patient
+ 
                 cursor.execute(
                     """SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.duration, a.status, a.notes,
                             t.id as therapist_id, t.first_name, t.last_name, t.profile_image
@@ -3525,14 +3524,14 @@ def Routes():
                 )
                 appointments = cursor.fetchall()
                 
-                # Format appointments for the API response
+ 
                 formatted_appointments = []
                 for appointment in appointments:
-                    # Format time for display
+ 
                     time_obj = appointment['appointment_time']
                     formatted_time = time_obj.strftime("%I:%M %p") if time_obj else "N/A"
                     
-                    # Format date for display
+ 
                     date_obj = appointment['appointment_date']
                     formatted_date = date_obj.strftime("%Y-%m-%d") if date_obj else "N/A"
                     
@@ -3592,7 +3591,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get patient and associated therapist
+ 
                 cursor.execute(
                     """SELECT p.therapist_id, t.first_name, t.last_name, t.profile_image, 
                             t.bio, t.experience_years, t.specialties, t.education, t.languages, 
@@ -3606,10 +3605,10 @@ def Routes():
                 result = cursor.fetchone()
                 
                 if not result:
-                    # User has no therapist assigned
+ 
                     return None
                 
-                # Convert JSON stored fields to Python objects
+ 
                 for field in ['specialties', 'education', 'languages']:
                     if result[field] and isinstance(result[field], str):
                         try:
@@ -3619,7 +3618,7 @@ def Routes():
                     elif result[field] is None:
                         result[field] = []
                 
-                # Format therapist object
+ 
                 therapist = {
                     "id": result["therapist_id"],
                     "name": f"{result['first_name']} {result['last_name']}",
@@ -3678,7 +3677,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Verify therapist exists
+ 
                 cursor.execute(
                     "SELECT id FROM Therapists WHERE id = %s",
                     (id,)
@@ -3691,7 +3690,7 @@ def Routes():
                         content={"status": "invalid", "detail": "Therapist not found"}
                     )
                 
-                # Get patient ID for this user
+ 
                 cursor.execute(
                     "SELECT patient_id FROM Patients WHERE user_id = %s",
                     (user_id,)
@@ -3706,7 +3705,7 @@ def Routes():
                 
                 patient_id = patient_record[0]
                 
-                # Check if a review already exists
+ 
                 cursor.execute(
                     "SELECT review_id FROM Reviews WHERE therapist_id = %s AND patient_id = %s",
                     (id, patient_id)
@@ -3717,7 +3716,7 @@ def Routes():
                 comment = rating.get('comment', '')
                 
                 if existing_review:
-                    # Update existing review
+ 
                     cursor.execute(
                         """UPDATE Reviews 
                         SET rating = %s, comment = %s, updated_at = CURRENT_TIMESTAMP
@@ -3725,7 +3724,7 @@ def Routes():
                         (rating_value, comment, existing_review[0])
                     )
                 else:
-                    # Create new review
+ 
                     cursor.execute(
                         """INSERT INTO Reviews 
                         (therapist_id, patient_id, rating, comment) 
@@ -3735,7 +3734,7 @@ def Routes():
                 
                 db.commit()
                 
-                # Update therapist's average rating
+ 
                 cursor.execute(
                     """UPDATE Therapists t
                     SET rating = (
@@ -3783,7 +3782,7 @@ def Routes():
                         content={"status": "invalid", "detail": "Email is required"}
                     )
                 
-                # Check if user exists
+ 
                 cursor.execute(
                     "SELECT user_id FROM users WHERE email = %s",
                     (email_address,)
@@ -3791,7 +3790,7 @@ def Routes():
                 user = cursor.fetchone()
                 
                 if not user:
-                    # Check therapist table as well
+ 
                     cursor.execute(
                         "SELECT id FROM Therapists WHERE company_email = %s",
                         (email_address,)
@@ -3799,19 +3798,19 @@ def Routes():
                     therapist = cursor.fetchone()
                     
                     if not therapist:
-                        # Don't reveal if email exists or not for security
+ 
                         return {"status": "valid", "message": "If this email is registered, you will receive reset instructions"}
                 
-                # Generate reset token
+ 
                 expiry = datetime.datetime.now() + datetime.timedelta(hours=24)
                 
-                # Store token in Redis with expiry
+ 
                 reset_token = secrets.token_hex(32)
 
-                # Store token in Redis with expiry
+ 
                 await r.set(f"reset:{reset_token}", email_address, ex=86400)
-                # In a real app, send an email with a reset link
-                # For demo purposes, just return success
+ 
+ 
                 print(f"Password reset requested for {email_address}. Token: {reset_token}")
                 
                 return {"status": "valid", "message": "If this email is registered, you will receive reset instructions"}
@@ -3840,7 +3839,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Verify therapist exists
+ 
                 cursor.execute(
                     "SELECT id FROM Therapists WHERE id = %s",
                     (id,)
@@ -3853,7 +3852,7 @@ def Routes():
                         content={"error": "Therapist not found"}
                     )
                 
-                # Get reviews for this therapist
+ 
                 cursor.execute(
                     """SELECT r.review_id, r.rating, r.comment, r.created_at,
                             p.first_name, p.last_name
@@ -3866,14 +3865,14 @@ def Routes():
                 )
                 reviews = cursor.fetchall()
                 
-                # Format for API response
+ 
                 formatted_reviews = []
                 for review in reviews:
-                    # Format date
+ 
                     created_date = review['created_at']
                     formatted_date = created_date.strftime("%Y-%m-%d") if created_date else "N/A"
                     
-                    # Create patient name, handling empty values
+ 
                     patient_name = f"{review['first_name'] or ''} {review['last_name'] or ''}".strip()
                     if not patient_name:
                         patient_name = "Anonymous Patient"
@@ -3928,7 +3927,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get all messages for this user
+ 
                 cursor.execute(
                     """SELECT m.message_id, m.subject, m.content, m.created_at, m.is_read,
                             CASE 
@@ -3951,10 +3950,10 @@ def Routes():
                 )
                 messages = cursor.fetchall()
                 
-                # Format for API response
+ 
                 formatted_messages = []
                 for message in messages:
-                    # Format date and time
+ 
                     created_date = message['created_at']
                     formatted_date = created_date.strftime("%Y-%m-%d %H:%M") if created_date else "N/A"
                     
@@ -4016,7 +4015,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Verify message belongs to this user
+ 
                 cursor.execute(
                     """SELECT message_id 
                     FROM Messages 
@@ -4031,7 +4030,7 @@ def Routes():
                         content={"status": "invalid", "detail": "Message not found"}
                     )
                 
-                # Mark message as read
+ 
                 cursor.execute(
                     "UPDATE Messages SET is_read = TRUE WHERE message_id = %s",
                     (message_id,)
@@ -4081,7 +4080,7 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
-                # Get user basic info
+ 
                 cursor.execute(
                     "SELECT username, email, profile_pic, created_at FROM users WHERE user_id = %s",
                     (user_id,)
@@ -4094,7 +4093,7 @@ def Routes():
                         content={"detail": "User not found"}
                     )
                 
-                # Get patient info if exists
+ 
                 cursor.execute(
                     """SELECT p.*, t.first_name as therapist_first_name, t.last_name as therapist_last_name
                     FROM Patients p
@@ -4104,7 +4103,7 @@ def Routes():
                 )
                 patient = cursor.fetchone()
                 
-                # Format for API response
+ 
                 profile = {
                     "username": user['username'],
                     "email": user['email'],
@@ -4173,7 +4172,7 @@ def Routes():
             cursor = db.cursor()
 
             try:
-                # Update user basic info if provided
+ 
                 if 'username' in profile_data or 'email' in profile_data:
                     update_fields = []
                     params = []
@@ -4193,10 +4192,10 @@ def Routes():
                         params
                     )
                 
-                # Update patient info if provided
+ 
                 patient_data = profile_data.get('patientProfile', {})
                 if patient_data:
-                    # Check if patient profile exists
+ 
                     cursor.execute(
                         "SELECT patient_id FROM Patients WHERE user_id = %s",
                         (user_id,)
@@ -4204,7 +4203,7 @@ def Routes():
                     patient = cursor.fetchone()
                     
                     if patient:
-                        # Update existing patient profile
+ 
                         patient_id = patient[0]
                         
                         update_fields = []
@@ -4229,8 +4228,8 @@ def Routes():
                                 params
                             )
                     else:
-                        # No patient profile exists, but not enough data to create one
-                        # Would need therapist_id to create a new patient profile
+ 
+ 
                         pass
                 
                 db.commit()

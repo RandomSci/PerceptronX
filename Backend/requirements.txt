@@ -15,7 +15,10 @@ python-multipart
 itsdangerous 
 starlette-session
 user_agents
-qrcode[pil]
-socket
+qrcode
+sockets
 ultralytics
 torch_snippets
+bcrypt
+mysql.connector
+fastcore==1.5.29

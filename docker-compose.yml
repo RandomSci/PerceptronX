@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - ./uploads:/app/Frontend_Web/static/assets/images/user
+      
+    depends_on:
+      - db
+      - redis
+    environment:
+      - MYSQL_HOST=db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DB=perceptronx
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: always
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=perceptronx
+      - MYSQL_ALLOW_EMPTY_PASSWORD=no
+    restart: always
+
+  redis:
+    image: redis:7.0
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+volumes:
+  mysql_data:
+  redis_data:
+  uploads:

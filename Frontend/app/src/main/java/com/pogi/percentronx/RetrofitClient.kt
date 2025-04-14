@@ -5,7 +5,6 @@ import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -26,18 +25,13 @@ object retrofitClient {
         .setLenient()
         .create()
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
-
     private val client = OkHttpClient.Builder()
         .cookieJar(cookieJar)
-        .addInterceptor(loggingInterceptor)
         .build()
 
     val instance: ApiService by lazy {
         Retrofit.Builder()
-            .baseUrl("http://192.168.43.56:8000/")
+            .baseUrl("http://192.168.1.14:8000/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()

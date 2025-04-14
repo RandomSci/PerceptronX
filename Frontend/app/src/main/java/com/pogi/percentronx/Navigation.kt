@@ -464,17 +464,12 @@ fun LoggedInProfileScreen(onLogoutSuccess: () -> Unit = {}) {
                 Button(
                     onClick = {
                         showLogoutDialog = false
-                        // Implement logout API call
                         retrofitClient.instance.logout().enqueue(object : Callback<Status> {
                             override fun onResponse(call: Call<Status>, response: Response<Status>) {
                                 if (response.isSuccessful) {
-                                    // Handle successful logout
                                     Log.d("API", "Logged out successfully")
-                                    // Use the stored context instead of LocalContext.current
                                     val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
                                     prefs.edit().remove("session_cookie").apply()
-
-                                    // Call the logout success callback
                                     onLogoutSuccess()
                                 } else {
                                     Log.e("API", "Logout failed: ${response.errorBody()?.string()}")
@@ -803,8 +798,6 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
                                     }
                                 }
                             }
-
-                            // Center logo
                             Surface(
                                 modifier = Modifier.size(70.dp),
                                 shape = CircleShape,
@@ -815,7 +808,6 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
                                 )
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    // Use appropriate Computer Vision related icon
                                     Icon(
                                         imageVector = Icons.Filled.Build,
                                         contentDescription = "APR-CV Logo",
@@ -944,17 +936,14 @@ fun AuthScreen(onLoginSuccess: () -> Unit = {}) {
         isVisible = showForgotPasswordDialog,
         onDismiss = { showForgotPasswordDialog = false },
         onPasswordResetRequested = { email ->
-            // Implement password reset API call
             val requestMap = mapOf("email" to email)
             retrofitClient.instance.resetPassword(requestMap).enqueue(object : Callback<Status> {
                 override fun onResponse(call: Call<Status>, response: Response<Status>) {
                     Log.d("API", "Password reset email sent")
-                    // In a real app, you would handle the response and show appropriate UI
                 }
 
                 override fun onFailure(call: Call<Status>, t: Throwable) {
                     Log.e("API", "Password reset error: ${t.message}")
-                    // In a real app, you would handle the error and show appropriate UI
                 }
             })
         }
@@ -1056,8 +1045,6 @@ fun SignUpForm(
             onClick = {
                 isLoading = true
                 statusMessage = ""
-
-                // Create register request
                 val registerRequest = Register(
                     username = username,
                     email = email,

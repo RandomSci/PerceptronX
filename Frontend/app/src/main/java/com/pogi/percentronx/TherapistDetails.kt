@@ -79,8 +79,6 @@ fun TherapistDetailsScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     val tabs = listOf("Overview", "Availability", "Reviews")
-
-    // Get therapist details
     LaunchedEffect(key1 = therapistId) {
         try {
             isLoading = true
@@ -161,7 +159,6 @@ fun TherapistDetailsScreen(
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Therapist header info
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -172,7 +169,6 @@ fun TherapistDetailsScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                // Therapist photo
                                 Box(
                                     modifier = Modifier
                                         .size(120.dp)
@@ -236,8 +232,6 @@ fun TherapistDetailsScreen(
                                 }
                             }
                         }
-
-                        // Tab row
                         TabRow(
                             selectedTabIndex = selectedTabIndex
                         ) {
@@ -249,15 +243,11 @@ fun TherapistDetailsScreen(
                                 )
                             }
                         }
-
-                        // Tab content
                         when (selectedTabIndex) {
                             0 -> TherapistOverviewTab(theTherapist)
                             1 -> TherapistAvailabilityTab(therapistId, navController)
                             2 -> TherapistReviewsTab(therapistId)
                         }
-
-                        // Add floating action button for chat/contact
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -290,7 +280,6 @@ fun TherapistOverviewTab(therapist: Therapist) {
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // About section
         Text(
             text = "About",
             style = MaterialTheme.typography.titleLarge,
@@ -305,8 +294,6 @@ fun TherapistOverviewTab(therapist: Therapist) {
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Experience section
         InfoRow(
             icon = Icons.Default.Build,
             title = "Experience",
@@ -314,8 +301,6 @@ fun TherapistOverviewTab(therapist: Therapist) {
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Education section
         InfoRow(
             icon = Icons.Default.Info,
             title = "Education",
@@ -323,8 +308,6 @@ fun TherapistOverviewTab(therapist: Therapist) {
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Languages section
         InfoRow(
             icon = Icons.Default.Create,
             title = "Languages",
@@ -332,8 +315,6 @@ fun TherapistOverviewTab(therapist: Therapist) {
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Location section
         InfoRow(
             icon = Icons.Default.LocationOn,
             title = "Address",
@@ -341,8 +322,6 @@ fun TherapistOverviewTab(therapist: Therapist) {
         )
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Session info section
         InfoRow(
             icon = Icons.Default.Notifications,
             title = "Average Session Length",
@@ -513,8 +492,6 @@ fun TherapistAvailabilityTab(therapistId: Int, navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Group time slots by date
             val groupedSlots = availableTimeSlots.groupBy { it.date }
 
             LazyColumn {

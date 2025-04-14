@@ -91,8 +91,6 @@ fun UpdatedDashboard(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
-
-            // Health Stats, Activity Summary, Goals section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -115,8 +113,6 @@ fun UpdatedDashboard(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Therapist section - changes based on whether user has a therapist
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -135,7 +131,6 @@ fun UpdatedDashboard(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (hasTherapist) {
-                        // Display when user has a therapist
                         Text(
                             text = "Your Therapist",
                             style = MaterialTheme.typography.titleLarge,
@@ -143,8 +138,6 @@ fun UpdatedDashboard(
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
-
-                        // Therapist photo placeholder
                         Box(
                             modifier = Modifier
                                 .size(80.dp)
@@ -221,7 +214,6 @@ fun UpdatedDashboard(
                             }
                         }
                     } else {
-                        // Display when user doesn't have a therapist
                         Text(
                             text = "Find a Therapist",
                             style = MaterialTheme.typography.titleLarge,
@@ -241,7 +233,6 @@ fun UpdatedDashboard(
 
                         Button(
                             onClick = {
-                                // Navigate to the TherapistFinder screen
                                 navController.navigate("therapist_finder")
                             },
                             colors = ButtonDefaults.buttonColors(
@@ -269,8 +260,6 @@ fun UpdatedDashboard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Appointment tracking card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -293,7 +282,6 @@ fun UpdatedDashboard(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (hasTherapist) {
-                        // Upcoming appointment list (simplified for demo)
                         AppointmentListItem(
                             therapistName = "Dr. Jane Smith",
                             date = "April 15, 2023",
@@ -365,8 +353,6 @@ fun UpdatedDashboard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Progress tracking card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -489,8 +475,6 @@ fun AppointmentListItem(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-
-        // Use FilterChip instead of SuggestionChip
         FilterChip(
             onClick = { },
             label = { Text(status) },

@@ -56,7 +56,6 @@ fun UpdatedNavigationGraph() {
     } else {
         Scaffold(
             bottomBar = {
-                // Only show bottom bar on main tabs
                 val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
                 val showBottomBar = currentRoute in bottomNavItems.map { it.route }
 
@@ -74,7 +73,6 @@ fun UpdatedNavigationGraph() {
                     navController = navController,
                     startDestination = if (status == "valid") "main" else "profile"
                 ) {
-                    // Main screens
                     composable(
                         "main",
                         enterTransition = {
@@ -132,8 +130,6 @@ fun UpdatedNavigationGraph() {
                             }
                         )
                     }
-
-                    // Therapist finder screens
                     composable("therapist_finder") {
                         TherapistFinderScreen(navController)
                     }
@@ -167,7 +163,6 @@ fun UpdatedNavigationGraph() {
                     ) { backStackEntry ->
                         val therapistId = backStackEntry.arguments?.getInt("therapistId") ?: 0
                         val slotId = backStackEntry.arguments?.getInt("slotId") ?: 0
-                        // Use the RequestAppointmentScreen with pre-selected time slot
                         RequestAppointmentScreen(navController, therapistId)
                     }
 

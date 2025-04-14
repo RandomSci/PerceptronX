@@ -3,6 +3,7 @@ from connections.mysql_database import *
 from connections.redis_database import *
 from connections.mongo_db import *
 from contextlib import asynccontextmanager
+import traceback
 
 def get_base_url():
     ip = input("Enter your IP Address: ").strip()
@@ -10,14 +11,53 @@ def get_base_url():
     print(f"[INFO] Base URL set to: {base_url}")
     return base_url
 
+def safely_parse_json_field(field_value, default=None):
+    """
+    Safely parse a JSON field from the database.
+    Returns the parsed JSON or the default value if parsing fails.
+    """
+    if field_value is None:
+        return default if default is not None else []
+    
+    if isinstance(field_value, (list, dict)):
+        return field_value
+        
+    if isinstance(field_value, bytes):
+        field_value = field_value.decode('utf-8')
+        
+    if not isinstance(field_value, str):
+        return default if default is not None else []
+        
+    try:
+        return json.loads(field_value)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else []
+
 def ensure_bytes(data):
     """
     Ensure data is in bytes format, converting from string if necessary.
     Use this before writing data to binary mode files or sending to functions expecting bytes.
     """
+    if data is None:
+        return b''
+    if isinstance(data, bytes):
+        return data
     if isinstance(data, str):
         return data.encode('utf-8')
-    return data
+    return str(data).encode('utf-8')
+
+def ensure_str(data):
+    """
+    Ensure data is in string format, converting from bytes if necessary.
+    Use this before inserting data into database fields expecting strings.
+    """
+    if data is None:
+        return None
+    if isinstance(data, str):
+        return data
+    if isinstance(data, bytes):
+        return data.decode('utf-8')
+    return str(data)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -1134,17 +1174,9 @@ def Routes():
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
 
- 
                 for field in ['specialties', 'education', 'languages']:
-                    if therapist[field] and isinstance(therapist[field], str):
-                        try:
-                            therapist[field] = json.loads(therapist[field])
-                        except:
-                            therapist[field] = []
-                    elif therapist[field] is None:
-                        therapist[field] = []
+                    therapist[field] = safely_parse_json_field(therapist[field])
 
- 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
@@ -1152,7 +1184,6 @@ def Routes():
                 unread_count_result = cursor.fetchone()
                 unread_messages_count = unread_count_result['count'] if unread_count_result else 0
 
- 
                 cursor.execute(
                     """SELECT patient_id, first_name, last_name, diagnosis, status 
                     FROM Patients 
@@ -1162,8 +1193,12 @@ def Routes():
                     (session_data["user_id"],)
                 )
                 recent_patients = cursor.fetchall()
+                
+                for patient in recent_patients:
+                    for key in patient:
+                        if isinstance(patient[key], bytes):
+                            patient[key] = patient[key].decode('utf-8')
 
- 
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Patients WHERE therapist_id = %s",
                     (session_data["user_id"],)
@@ -1171,7 +1206,6 @@ def Routes():
                 total_patients_result = cursor.fetchone()
                 total_patients = total_patients_result['count'] if total_patients_result else 0
 
- 
                 cursor.execute(
                     """SELECT AVG(rating) as average_rating, COUNT(*) as review_count 
                     FROM Reviews 
@@ -1186,7 +1220,6 @@ def Routes():
                     average_rating = 0
                     review_count = 0
 
- 
                 cursor.execute(
                     """SELECT r.review_id, r.rating, r.comment, r.created_at, 
                             p.first_name, p.last_name
@@ -1198,14 +1231,19 @@ def Routes():
                     (session_data["user_id"],)
                 )
                 recent_reviews = cursor.fetchall()
+                
+                for review in recent_reviews:
+                    for key in review:
+                        if isinstance(review[key], bytes):
+                            review[key] = review[key].decode('utf-8')
 
                 return templates.TemplateResponse(
                     "dist/dashboard/therapist_profile.html",
                     {
                         "request": request,
                         "therapist": therapist,
-                        "first_name": therapist["first_name"],
-                        "last_name": therapist["last_name"],
+                        "first_name": ensure_str(therapist["first_name"]),
+                        "last_name": ensure_str(therapist["last_name"]),
                         "unread_messages_count": unread_messages_count,
                         "recent_patients": recent_patients,
                         "total_patients": total_patients,
@@ -1217,14 +1255,15 @@ def Routes():
 
             except Exception as e:
                 print(f"Database error in profile view: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
                 return RedirectResponse(url="/front-page")
             finally:
                 cursor.close()
                 db.close()
         except Exception as e:
             print(f"Error in profile view: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             return RedirectResponse(url="/Therapist_Login")
-
     @app.get("/api/therapist/{therapist_id}")
     async def get_therapist_api(therapist_id: int):
         """API endpoint to get therapist information"""
@@ -1288,7 +1327,7 @@ def Routes():
             cursor.close()
             db.close()
         
-    @app.get("/profile/edit")
+    @app.get("`/profile`/edit")
     async def edit_profile_form(request: Request):
         session_id = request.cookies.get("session_id")
         if not session_id:
@@ -1300,7 +1339,6 @@ def Routes():
             db = get_Mysql_db()
             cursor = db.cursor(dictionary=True)
             try:
- 
                 cursor.execute(
                     """SELECT id, first_name, last_name, company_email, profile_image, 
                             bio, experience_years, specialties, education, languages, 
@@ -1313,36 +1351,24 @@ def Routes():
                 therapist = cursor.fetchone()
                 if not therapist:
                     return RedirectResponse(url="/Therapist_Login")
-                    
- 
                 for field in ['specialties', 'education', 'languages']:
-                    if therapist[field] and isinstance(therapist[field], str):
-                        try:
-                            therapist[field] = json.loads(therapist[field])
-                        except:
-                            therapist[field] = []
-                    elif therapist[field] is None:
-                        therapist[field] = []
-                        
- 
+                    therapist[field] = safely_parse_json_field(therapist[field])
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
                     (session_data["user_id"],)
                 )
                 unread_count_result = cursor.fetchone()
                 unread_messages_count = unread_count_result['count'] if unread_count_result else 0
-                
- 
                 all_specialties = get_all_specialties()
-                existing_specialties = therapist["specialties"] if therapist["specialties"] else []
+                existing_specialties = therapist["specialties"]
                 
                 return templates.TemplateResponse(
                     "dist/dashboard/therapist_edit_profile.html",
                     {
                         "request": request,
                         "therapist": therapist,
-                        "first_name": therapist["first_name"],
-                        "last_name": therapist["last_name"],
+                        "first_name": ensure_str(therapist["first_name"]),
+                        "last_name": ensure_str(therapist["last_name"]),
                         "unread_messages_count": unread_messages_count,
                         "all_specialties": all_specialties,
                         "existing_specialties": existing_specialties
@@ -1350,14 +1376,74 @@ def Routes():
                 )
             except Exception as e:
                 print(f"Database error in edit profile form: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
                 return RedirectResponse(url="/front-page")
             finally:
                 cursor.close()
                 db.close()
         except Exception as e:
             print(f"Error in edit profile form: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             return RedirectResponse(url="/Therapist_Login")
         
+    @app.get("/profile/edit")
+    async def edit_profile_form(request: Request):
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
+        try:
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
+            db = get_Mysql_db()
+            cursor = db.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    """SELECT id, first_name, last_name, company_email, profile_image, 
+                            bio, experience_years, specialties, education, languages, 
+                            address, rating, review_count, 
+                            is_accepting_new_patients, average_session_length
+                    FROM Therapists 
+                    WHERE id = %s""", 
+                    (session_data["user_id"],)
+                )
+                therapist = cursor.fetchone()
+                if not therapist:
+                    return RedirectResponse(url="/Therapist_Login")
+                for field in ['specialties', 'education', 'languages']:
+                    therapist[field] = safely_parse_json_field(therapist[field])
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
+                    (session_data["user_id"],)
+                )
+                unread_count_result = cursor.fetchone()
+                unread_messages_count = unread_count_result['count'] if unread_count_result else 0
+                all_specialties = get_all_specialties()
+                existing_specialties = therapist["specialties"]
+                
+                return templates.TemplateResponse(
+                    "dist/dashboard/therapist_edit_profile.html",
+                    {
+                        "request": request,
+                        "therapist": therapist,
+                        "first_name": ensure_str(therapist["first_name"]),
+                        "last_name": ensure_str(therapist["last_name"]),
+                        "unread_messages_count": unread_messages_count,
+                        "all_specialties": all_specialties,
+                        "existing_specialties": existing_specialties
+                    }
+                )
+            except Exception as e:
+                print(f"Database error in edit profile form: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(url="/front-page")
+            finally:
+                cursor.close()
+                db.close()
+        except Exception as e:
+            print(f"Error in edit profile form: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/Therapist_Login")
     
     @app.post("/profile/update2")
     async def update_profile_v2(request: Request):
@@ -1373,20 +1459,14 @@ def Routes():
             session_data = await get_redis_session(session_id)
             if not session_data:
                 return RedirectResponse(url="/Therapist_Login", status_code=303)
-                
- 
             form_data = await request.form()
-            
- 
             profile_data = {
-                "first_name": form_data.get("first_name", ""),
-                "last_name": form_data.get("last_name", ""),
-                "company_email": form_data.get("company_email", ""),
-                "bio": form_data.get("bio", ""),
-                "address": form_data.get("address", "")
+                "first_name": ensure_str(form_data.get("first_name", "")),
+                "last_name": ensure_str(form_data.get("last_name", "")),
+                "company_email": ensure_str(form_data.get("company_email", "")),
+                "bio": ensure_str(form_data.get("bio", "")),
+                "address": ensure_str(form_data.get("address", ""))
             }
-            
- 
             try:
                 profile_data["experience_years"] = int(form_data.get("experience_years", "0"))
             except ValueError:
@@ -1406,62 +1486,34 @@ def Routes():
                 profile_data["average_session_length"] = int(form_data.get("average_session_length", "60"))
             except ValueError:
                 profile_data["average_session_length"] = 60
-                
- 
             profile_data["is_accepting_new_patients"] = form_data.get("is_accepting_new_patients") == "1"
-            
- 
             specialties = form_data.getlist("specialties")
-            if specialties:
-                profile_data["specialties"] = json.dumps(specialties)
-            else:
-                profile_data["specialties"] = "[]"
+            profile_data["specialties"] = json.dumps(specialties)
                 
             education = form_data.getlist("education")
-            if education:
-                profile_data["education"] = json.dumps(education)
-            else:
-                profile_data["education"] = "[]"
+            profile_data["education"] = json.dumps(education)
                 
             languages = form_data.getlist("languages")
-            if languages:
-                profile_data["languages"] = json.dumps(languages)
-            else:
-                profile_data["languages"] = "[]"
-            
- 
+            profile_data["languages"] = json.dumps(languages)
             profile_image_filename = None
-            
- 
             profile_image = form_data.get("profile_image")
-
- 
             if profile_image and hasattr(profile_image, "filename") and profile_image.filename:
                 try:
- 
                     contents = await profile_image.read()
-                    
                     if contents and len(contents) > 0:
- 
+                        contents = ensure_bytes(contents)
                         file_extension = profile_image.filename.split(".")[-1].lower()
                         allowed_extensions = ["jpg", "jpeg", "png", "gif"]
                         
                         if file_extension in allowed_extensions:
- 
                             profile_image_filename = f"therapist_{session_data['user_id']}_{int(time.time())}.{file_extension}"
-                            
- 
                             current_file = FilePath(__file__).resolve()
                             project_root = current_file.parent.parent.parent
                             uploads_dir = project_root / "Frontend_Web" / "static" / "assets" / "images" / "user"
-                            
- 
                             uploads_dir.mkdir(parents=True, exist_ok=True)
-                            
- 
                             file_path = uploads_dir / profile_image_filename
                             with open(file_path, "wb") as f:
-                                f.write(ensure_bytes(contents))
+                                f.write(contents)
                             
                             print(f"Profile image saved: {profile_image_filename}")
                             print(f"File path: {file_path}")
@@ -1471,47 +1523,30 @@ def Routes():
                         print("Empty file content")
                 except Exception as img_error:
                     print(f"Error processing image: {img_error}")
- 
-            
- 
+                    print(f"Traceback: {traceback.format_exc()}")
             db = get_Mysql_db()
             cursor = None
             try:
                 cursor = db.cursor()
-                
- 
                 update_fields = []
                 params = []
-                
- 
                 for field in profile_data:
                     update_fields.append(f"{field} = %s")
                     params.append(profile_data[field])
-                
- 
                 if profile_image_filename:
                     update_fields.append("profile_image = %s")
                     params.append(profile_image_filename)
-                
- 
                 params.append(session_data["user_id"])
-                
- 
                 query = f"UPDATE Therapists SET {', '.join(update_fields)} WHERE id = %s"
                 cursor.execute(query, params)
-                
- 
                 db.commit()
                 print("Profile updated successfully")
-                
- 
                 return RedirectResponse(url="/profile", status_code=303)
             except Exception as db_error:
                 print(f"Database error: {db_error}")
+                print(f"Traceback: {traceback.format_exc()}")
                 if db:
                     db.rollback()
-                
- 
                 return RedirectResponse(url="/profile/edit", status_code=303)
             finally:
                 if cursor:
@@ -1521,8 +1556,8 @@ def Routes():
                     
         except Exception as e:
             print(f"Unexpected error in profile update: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             return RedirectResponse(url="/Therapist_Login", status_code=303)
-
 
  
 
@@ -4181,18 +4216,17 @@ def Routes():
             cursor = db.cursor()
 
             try:
- 
                 if 'username' in profile_data or 'email' in profile_data:
                     update_fields = []
                     params = []
                     
                     if 'username' in profile_data:
                         update_fields.append("username = %s")
-                        params.append(profile_data['username'])
+                        params.append(ensure_str(profile_data['username']))
                     
                     if 'email' in profile_data:
                         update_fields.append("email = %s")
-                        params.append(profile_data['email'])
+                        params.append(ensure_str(profile_data['email']))
                     
                     params.append(user_id)
                     
@@ -4200,11 +4234,8 @@ def Routes():
                         f"UPDATE users SET {', '.join(update_fields)}, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s",
                         params
                     )
-                
- 
                 patient_data = profile_data.get('patientProfile', {})
                 if patient_data:
- 
                     cursor.execute(
                         "SELECT patient_id FROM Patients WHERE user_id = %s",
                         (user_id,)
@@ -4212,7 +4243,6 @@ def Routes():
                     patient = cursor.fetchone()
                     
                     if patient:
- 
                         patient_id = patient[0]
                         
                         update_fields = []
@@ -4228,7 +4258,7 @@ def Routes():
                         ]:
                             if field in patient_data:
                                 update_fields.append(f"{db_field} = %s")
-                                params.append(patient_data[field])
+                                params.append(ensure_str(patient_data[field]))
                         
                         if update_fields:
                             params.append(patient_id)
@@ -4237,8 +4267,6 @@ def Routes():
                                 params
                             )
                     else:
- 
- 
                         pass
                 
                 db.commit()
@@ -4248,6 +4276,7 @@ def Routes():
             except Exception as e:
                 db.rollback()
                 print(f"Database error in update user profile API: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
                 return JSONResponse(
                     status_code=500,
                     content={"status": "invalid", "detail": f"Error updating profile: {str(e)}"}
@@ -4257,6 +4286,7 @@ def Routes():
                 db.close()
         except Exception as e:
             print(f"Error in update user profile API: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             return JSONResponse(
                 status_code=500,
                 content={"status": "invalid", "detail": f"Server error: {str(e)}"}

@@ -28,14 +28,10 @@ fun RequestAppointmentScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
-    // State variables
     var therapist by remember { mutableStateOf<Therapist?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // Form fields
     var selectedDate by remember { mutableStateOf("") }
     var selectedTime by remember { mutableStateOf("") }
     var appointmentType by remember { mutableStateOf("Initial Consultation") }
@@ -44,13 +40,9 @@ fun RequestAppointmentScreen(
     var insuranceMemberId by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
-
-    // Date picker state
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
-
-    // Appointment types
     val appointmentTypes = listOf(
         "Initial Consultation",
         "Regular Session",
@@ -69,8 +61,6 @@ fun RequestAppointmentScreen(
             errorMessage = "Error loading therapist details: ${e.message}"
         }
     }
-
-    // Date picker dialog
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -97,8 +87,6 @@ fun RequestAppointmentScreen(
             DatePicker(state = datePickerState)
         }
     }
-
-    // Time picker dialog (simplified version, would use a proper time picker in a real app)
     if (showTimePicker) {
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
@@ -176,8 +164,6 @@ fun RequestAppointmentScreen(
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Date selection
                     OutlinedTextField(
                         value = selectedDate,
                         onValueChange = { },
@@ -196,8 +182,6 @@ fun RequestAppointmentScreen(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // Time selection
                     OutlinedTextField(
                         value = selectedTime,
                         onValueChange = { },
@@ -216,8 +200,6 @@ fun RequestAppointmentScreen(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // Appointment type selection
                     var appointmentTypeExpanded by remember { mutableStateOf(false) }
 
                     ExposedDropdownMenuBox(
@@ -254,8 +236,6 @@ fun RequestAppointmentScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // Notes field
                     OutlinedTextField(
                         value = notes,
                         onValueChange = { notes = it },
@@ -268,8 +248,6 @@ fun RequestAppointmentScreen(
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Insurance information section
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp)
@@ -307,8 +285,6 @@ fun RequestAppointmentScreen(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Error message
                     if (errorMessage != null) {
                         Text(
                             text = errorMessage ?: "",
@@ -316,8 +292,6 @@ fun RequestAppointmentScreen(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-
-                    // Submit button
                     Button(
                         onClick = {
                             if (selectedDate.isBlank()) {
@@ -329,12 +303,8 @@ fun RequestAppointmentScreen(
                                 errorMessage = "Please select a preferred time"
                                 return@Button
                             }
-
-                            // Clear previous error
                             errorMessage = null
                             isSubmitting = true
-
-                            // Create appointment request
                             val appointmentRequest = AppointmentRequest(
                                 therapistId = therapistId,
                                 date = selectedDate,
@@ -344,8 +314,6 @@ fun RequestAppointmentScreen(
                                 insuranceProvider = insuranceProvider.ifBlank { null },
                                 insuranceMemberId = insuranceMemberId.ifBlank { null }
                             )
-
-                            // Submit request
                             coroutineScope.launch {
                                 try {
                                     val response = retrofitClient.instance.requestAppointment(appointmentRequest)

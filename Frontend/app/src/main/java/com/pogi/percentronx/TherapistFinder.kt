@@ -130,7 +130,6 @@ fun TherapistFinderScreen(navController: NavController) {
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -157,8 +156,6 @@ fun TherapistFinderScreen(navController: NavController) {
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Specialty filter dropdown
             var expanded by remember { mutableStateOf(false) }
 
             ExposedDropdownMenuBox(
@@ -290,7 +287,6 @@ fun TherapistListItem(therapist: TherapistListItem, onClick: () -> Unit) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Therapist photo
             Box(
                 modifier = Modifier
                     .size(80.dp)

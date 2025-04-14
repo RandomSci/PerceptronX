@@ -96,12 +96,8 @@ fun TherapistChatScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var messageText by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
-
-    // Mock messages for demo purposes
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
     val scrollState = rememberLazyListState()
-
-    // Define sendMessage function here at the top level of the composable
     val sendMessage: () -> Unit = sendMessage@{
         if (messageText.isBlank() || isSending) return@sendMessage
 
@@ -112,16 +108,6 @@ fun TherapistChatScreen(
 
         coroutineScope.launch {
             try {
-                // For a real app, you would create and use a message request like this:
-                // val messageRequest = MessageRequest(
-                //     recipient_id = therapistId,
-                //     recipient_type = "therapist",
-                //     subject = "Chat Message",
-                //     content = content
-                // )
-
-                // In a real app, this would send to the server
-                // For demo purposes, we'll just add it to our local message list
                 val newMessage = ChatMessage(
                     id = (messages.maxOfOrNull { it.id } ?: 0) + 1,
                     senderId = 1, // User ID
@@ -133,15 +119,9 @@ fun TherapistChatScreen(
                 )
 
                 messages = messages + newMessage
-
-                // Simulate API call
                 delay(500)
 
                 try {
-                    // This would be the actual API call in a real app
-                    // val response = retrofitClient.instance.sendMessage(messageRequest)
-
-                    // Simulate a response from the therapist after a delay
                     delay(2000)
                     if (content.contains("hello", ignoreCase = true) ||
                         content.contains("hi", ignoreCase = true)) {
@@ -200,19 +180,13 @@ fun TherapistChatScreen(
             }
         }
     }
-
-    // Load therapist details
     LaunchedEffect(key1 = therapistId) {
         try {
             isLoading = true
             val result = retrofitClient.instance.getTherapistDetails(therapistId)
             therapist = result
-
-            // Mock messages for UI demo
             val mockMessages = mutableListOf<ChatMessage>()
             val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-
-            // Simulate a conversation
             mockMessages.add(
                 ChatMessage(
                     id = 1,
@@ -287,8 +261,6 @@ fun TherapistChatScreen(
 
             messages = mockMessages
             isLoading = false
-
-            // Scroll to bottom of chat
             delay(300) // Small delay to ensure layout is complete
             scrollState.animateScrollToItem(messages.size - 1)
         } catch (e: Exception) {
@@ -296,8 +268,6 @@ fun TherapistChatScreen(
             errorMessage = "Error loading therapist details: ${e.message}"
         }
     }
-
-    // Auto-scroll to bottom when new messages are added
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             scrollState.animateScrollToItem(messages.size - 1)
@@ -427,7 +397,6 @@ fun TherapistChatScreen(
                         }
                     }
                 } else {
-                    // Chat messages
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
@@ -445,8 +414,6 @@ fun TherapistChatScreen(
                         }
                     }
                 }
-
-                // Message input
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

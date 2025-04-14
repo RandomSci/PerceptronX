@@ -10,6 +10,15 @@ def get_base_url():
     print(f"[INFO] Base URL set to: {base_url}")
     return base_url
 
+def ensure_bytes(data):
+    """
+    Ensure data is in bytes format, converting from string if necessary.
+    Use this before writing data to binary mode files or sending to functions expecting bytes.
+    """
+    if isinstance(data, str):
+        return data.encode('utf-8')
+    return data
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.base_url = get_base_url()
@@ -1452,7 +1461,7 @@ def Routes():
  
                             file_path = uploads_dir / profile_image_filename
                             with open(file_path, "wb") as f:
-                                f.write(contents)
+                                f.write(ensure_bytes(contents))
                             
                             print(f"Profile image saved: {profile_image_filename}")
                             print(f"File path: {file_path}")

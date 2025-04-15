@@ -11,14 +11,13 @@ asyncpg
 databases
 aiosqlite
 motor
-python-multipart 
-itsdangerous 
+python-multipart
+itsdangerous
 starlette-session
 user_agents
 qrcode
 sockets
 ultralytics
-torch_snippets
 bcrypt
 mysql.connector
 fastcore==1.5.29

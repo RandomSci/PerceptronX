@@ -5,11 +5,29 @@ from connections.mongo_db import *
 from contextlib import asynccontextmanager
 import traceback
 
-def get_base_url():
-    ip = input("Enter your IP Address: ").strip()
-    base_url = f"http://{ip}:8000"
-    print(f"[INFO] Base URL set to: {base_url}")
-    return base_url
+def getIP():
+        try:
+            hostname = socket.gethostname()
+            
+            ip = socket.gethostbyname(hostname)
+            
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(('10.255.255.255', 1))
+                ip = s.getsockname()[0]
+            except Exception:
+                ip = '127.0.0.1'
+            finally:
+                s.close()
+            
+            full_ip = f"http://{ip}:8000"
+            print(f"Using IP: {ip}")
+            print(f"Base URL: {full_ip}")
+            return full_ip
+        except Exception as e:
+            print(f"Error detecting IP: {e}")
+            print("Defaulting to localhost")
+            return "http://127.0.0.1:8000"
 
 def safely_parse_json_field(field_value, default=None):
     """
@@ -61,7 +79,7 @@ def ensure_str(data):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.base_url = get_base_url()
+    app.state.base_url = getIP()
 
     await test_redis_connection()
 
@@ -3065,7 +3083,6 @@ def Routes():
                         status_code=404,
                         content={"error": "Therapist not found"}
                     )
-
  
                 for field in ['specialties', 'education', 'languages']:
                     if therapist[field] and isinstance(therapist[field], str):
@@ -4291,13 +4308,7 @@ def Routes():
                 status_code=500,
                 content={"status": "invalid", "detail": f"Server error: {str(e)}"}
             )
-    def getIP():
-        ip = input("Enter your IP Address: ").strip()
-        if ip == "q":
-            quit()
-        full_ip = f"http://{ip}:8000"
-        print(f"Base URL: {full_ip}")
-        return full_ip
+    
 
     if __name__ == "__main__":
         base_url = getIP()

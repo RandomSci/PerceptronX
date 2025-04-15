@@ -11,11 +11,12 @@ from pathlib import Path as FilePath
 from fastapi import *
 from ultralytics import YOLO
 from typing import Optional, Dict
-from torch_snippets import *
 import cv2, matplotlib.pyplot as plt, pandas as pd, torch, bcrypt, user_agents, datetime
 from datetime import timedelta
 from contextlib import asynccontextmanager
 import uvicorn, secrets, qrcode, io, socket, time
+import json
+
 class AppointmentRequest(BaseModel):
     therapistId: int
     date: str

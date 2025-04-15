@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 14, 2025 at 02:06 PM
+-- Generation Time: Apr 15, 2025 at 06:58 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -261,22 +261,6 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `subscriptions`
---
-
-CREATE TABLE `subscriptions` (
-  `subscription_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `plan_type` enum('Free','Pro','Enterprise') DEFAULT 'Free',
-  `start_date` date DEFAULT curdate(),
-  `end_date` date DEFAULT NULL,
-  `payment_status` enum('Pending','Completed','Failed') DEFAULT 'Pending',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `Therapists`
 --
 
@@ -453,13 +437,6 @@ ALTER TABLE `Reviews`
   ADD KEY `idx_review_therapist` (`therapist_id`);
 
 --
--- Indexes for table `subscriptions`
---
-ALTER TABLE `subscriptions`
-  ADD PRIMARY KEY (`subscription_id`),
-  ADD KEY `user_id` (`user_id`);
-
---
 -- Indexes for table `Therapists`
 --
 ALTER TABLE `Therapists`
@@ -556,12 +533,6 @@ ALTER TABLE `Reviews`
   MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `subscriptions`
---
-ALTER TABLE `subscriptions`
-  MODIFY `subscription_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `Therapists`
 --
 ALTER TABLE `Therapists`
@@ -650,12 +621,6 @@ ALTER TABLE `Patients`
 ALTER TABLE `Reviews`
   ADD CONSTRAINT `Reviews_ibfk_1` FOREIGN KEY (`therapist_id`) REFERENCES `Therapists` (`id`),
   ADD CONSTRAINT `Reviews_ibfk_2` FOREIGN KEY (`patient_id`) REFERENCES `Patients` (`patient_id`);
-
---
--- Constraints for table `subscriptions`
---
-ALTER TABLE `subscriptions`
-  ADD CONSTRAINT `subscriptions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `TreatmentPlanExercises`

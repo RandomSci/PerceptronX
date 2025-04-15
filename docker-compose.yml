@@ -20,6 +20,7 @@ services:
       - REDIS_PORT=6379
       - MONGO_HOST=mongodb
       - MONGO_PORT=27017
+      - STATIC_DIR=/PERCEPTRONX/Frontend_Web/static
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]

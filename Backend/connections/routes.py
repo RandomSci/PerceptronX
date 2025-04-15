@@ -5,29 +5,73 @@ from connections.mongo_db import *
 from contextlib import asynccontextmanager
 import traceback
 
-def getIP():
-        try:
-            hostname = socket.gethostname()
-            
-            ip = socket.gethostbyname(hostname)
-            
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+def find_best_matching_image(therapist_id, requested_filename, static_dir):
+    """
+    Find the best matching image for a therapist, even if the filename doesn't exactly match.
+    This handles cases where database references don't match actual files.
+    
+    Args:
+        therapist_id: The ID of the therapist
+        requested_filename: The filename from the database
+        static_dir: The static directory path
+        
+    Returns:
+        The best matching filename or a default avatar
+    """
+    import os
+    
+    user_images_dir = os.path.join(static_dir, "assets/images/user")
+    
+    if requested_filename and os.path.exists(os.path.join(user_images_dir, requested_filename)):
+        return requested_filename
+    
+    if therapist_id:
+        prefix = f"therapist_{therapist_id}_"
+        
+        if os.path.exists(user_images_dir) and os.path.isdir(user_images_dir):
             try:
-                s.connect(('10.255.255.255', 1))
-                ip = s.getsockname()[0]
-            except Exception:
-                ip = '127.0.0.1'
-            finally:
-                s.close()
-            
-            full_ip = f"http://{ip}:8000"
-            print(f"Using IP: {ip}")
-            print(f"Base URL: {full_ip}")
-            return full_ip
-        except Exception as e:
-            print(f"Error detecting IP: {e}")
-            print("Defaulting to localhost")
-            return "http://127.0.0.1:8000"
+                all_files = os.listdir(user_images_dir)
+                
+                matching_files = [f for f in all_files if f.startswith(prefix)]
+                
+                if matching_files:
+                    print(f"Found matching image for therapist {therapist_id}: {matching_files[0]}")
+                    return matching_files[0]
+            except Exception as e:
+                print(f"Error searching for matching images: {e}")
+    
+    avatar_id = (therapist_id % 10) if therapist_id else 1
+    default_image = f"avatar-{avatar_id}.jpg"
+    
+    if os.path.exists(os.path.join(user_images_dir, default_image)):
+        return default_image
+    else:
+        return "avatar-1.jpg"
+
+def getIP():
+    try:
+        hostname = socket.gethostname()
+        
+        ip = socket.gethostbyname(hostname)
+        
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 1))
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = '127.0.0.1'
+        finally:
+            s.close()
+        
+        full_ip = f"http://{ip}:8000"
+        print(f"Using IP: {ip}")
+        print(f"Base URL: {full_ip}")
+        return full_ip
+    except Exception as e:
+        print(f"Error detecting IP: {e}")
+        print("Defaulting to localhost")
+        return "http://127.0.0.1:8000"
 
 def safely_parse_json_field(field_value, default=None):
     """
@@ -49,6 +93,8 @@ def safely_parse_json_field(field_value, default=None):
     try:
         return json.loads(field_value)
     except (json.JSONDecodeError, TypeError):
+        if isinstance(field_value, str) and ',' in field_value:
+            return [item.strip() for item in field_value.split(',')]
         return default if default is not None else []
 
 def ensure_bytes(data):
@@ -77,15 +123,53 @@ def ensure_str(data):
         return data.decode('utf-8')
     return str(data)
 
+async def test_redis_connection():
+    pass
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.base_url = getIP()
+    if not hasattr(app.state, 'base_url') or not app.state.base_url:
+        app.state.base_url = getIP()
 
     await test_redis_connection()
-
     yield
+
+def configure_static_files(app):
+    static_dir = os.environ.get("STATIC_DIR", None)
     
+    if not static_dir:
+        current_file = FilePath(__file__).resolve()
+        project_root = current_file.parent.parent.parent
+        static_dir = str(project_root / "Frontend_Web" / "static")
+    
+    if not os.path.exists(static_dir):
+        os.makedirs(static_dir, exist_ok=True)
+        print(f"Created static directory: {static_dir}")
+    
+    if not hasattr(app.state, 'base_url') or not app.state.base_url:
+        base_url = os.environ.get("BASE_URL", None)
+        if base_url:
+            app.state.base_url = base_url
+        else:
+            app.state.base_url = getIP()
+    
+    if not any(route.path == "/static" for route in app.routes):
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+        print(f"Static directory mounted: {static_dir}")
+    
+    print(f"Base URL configured as: {app.state.base_url}")
+    
+    templates_dir = os.path.join(os.path.dirname(static_dir), "templates")
+    if os.path.exists(templates_dir) and not any(route.path == "/dist" for route in app.routes):
+        app.mount("/dist", StaticFiles(directory=templates_dir), name="templates")
+        print(f"Templates directory mounted: {templates_dir}")
+    
+    return Jinja2Templates(directory=templates_dir) if os.path.exists(templates_dir) else None
+
 app = FastAPI(title="PerceptronX API", version="1.0", lifespan=lifespan)
+
+templates = configure_static_files(app)
+
 class PlatformRoutingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
@@ -116,7 +200,17 @@ app.add_middleware(PlatformRoutingMiddleware)
 @app.on_event("startup")
 async def startup_event():
     await test_redis_connection()
+
 router = APIRouter()
+app.include_router(router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"],  
+)
 
 current_file = FilePath(__file__).resolve()
 project_root = current_file.parent.parent.parent
@@ -2934,55 +3028,6 @@ def Routes():
             db.close()
             
  
-    @app.get("/debug/image-paths")
-    async def debug_image_paths():
-        """Debug endpoint to check image paths and accessibility"""
-        import os
-        from fastapi.staticfiles import StaticFiles
-        
- 
-        static_dir = app.static_directory if hasattr(app, 'static_directory') else "/home/zkllmt/Documents/AI_Section/Android_Projects/PerceptronX/Frontend_Web/static"
-        
- 
-        paths_to_check = [
-            "/static/assets/images/user",
-            "/Frontend_Web/static/assets/images/user",
-            "assets/images/user",
-            "images/user"
-        ]
-        
-        results = {}
-        
- 
-        for path in paths_to_check:
-            full_path = os.path.join(static_dir, path.lstrip('/'))
-            results[path] = {
-                "exists": os.path.exists(full_path),
-                "full_path": full_path,
-                "is_dir": os.path.isdir(full_path) if os.path.exists(full_path) else False
-            }
-            
-            if results[path]["exists"] and results[path]["is_dir"]:
- 
-                files = os.listdir(full_path)
-                results[path]["files"] = files[:10] 
-        
- 
-        static_mounts = []
-        for route in app.routes:
-            if isinstance(route, StaticFiles):
-                static_mounts.append({
-                    "path": route.path,
-                    "directory": route.directory
-                })
-        
-        return {
-            "static_directory": static_dir,
-            "path_checks": results,
-            "static_mounts": static_mounts
-        }
-
- 
     @app.get("/therapists")
     async def get_therapists():
         """API endpoint to get a list of all therapists for the mobile app"""
@@ -2991,7 +3036,6 @@ def Routes():
             cursor = db.cursor(dictionary=True)
 
             try:
- 
                 cursor.execute(
                     """SELECT id, first_name, last_name, profile_image, 
                             specialties, address, rating, review_count, 
@@ -3002,33 +3046,26 @@ def Routes():
                 )
                 therapists = cursor.fetchall()
 
- 
- 
                 base_url = app.state.base_url
+                static_dir = getattr(app.state, 'static_directory', "/PERCEPTRONX/Frontend_Web/static")
                 
- 
                 print(f"Using base URL: {base_url}")
                 
- 
                 formatted_therapists = []
                 for therapist in therapists:
- 
-                    specialties = []
-                    if therapist['specialties'] and isinstance(therapist['specialties'], str):
-                        try:
-                            specialties = json.loads(therapist['specialties'])
-                        except:
-                            specialties = []
+                    specialties = safely_parse_json_field(therapist['specialties'], [])
                     
- 
-                    profile_image = therapist['profile_image'] or "avatar-1.jpg"
- 
-                    photoUrl = f"{base_url}/static/assets/images/user/{profile_image}"
+                    profile_image = therapist['profile_image']
+                    matched_image = find_best_matching_image(
+                        therapist["id"], 
+                        profile_image, 
+                        static_dir
+                    )
                     
- 
-                    print(f"Therapist ID: {therapist['id']}, Image: {profile_image}, URL: {photoUrl}")
+                    photoUrl = f"/static/assets/images/user/{matched_image}"
+                    
+                    print(f"Therapist ID: {therapist['id']}, Original Image: {profile_image}, Matched: {matched_image}, URL: {photoUrl}")
 
- 
                     formatted_therapists.append({
                         "id": therapist["id"],
                         "name": f"{therapist['first_name']} {therapist['last_name']}",
@@ -3083,27 +3120,19 @@ def Routes():
                         status_code=404,
                         content={"error": "Therapist not found"}
                     )
- 
+                
                 for field in ['specialties', 'education', 'languages']:
-                    if therapist[field] and isinstance(therapist[field], str):
-                        try:
-                            therapist[field] = json.loads(therapist[field])
-                        except:
-                            therapist[field] = []
-                    elif therapist[field] is None:
-                        therapist[field] = []
+                    therapist[field] = safely_parse_json_field(therapist[field], [])
                         
- 
-                base_url = app.state.base_url
+                static_dir = getattr(app.state, 'static_directory', "/PERCEPTRONX/Frontend_Web/static")
                 
- 
-                profile_image = therapist['profile_image'] or "avatar-1.jpg"
-                photoUrl = f"{base_url}/static/assets/images/user/{profile_image}"
+                profile_image = therapist['profile_image']
+                matched_image = find_best_matching_image(id, profile_image, static_dir)
                 
- 
-                print(f"Therapist detail ID: {therapist['id']}, Image: {profile_image}, URL: {photoUrl}")
+                photoUrl = f"/static/assets/images/user/{matched_image}"
+                
+                print(f"Therapist detail ID: {id}, Original Image: {profile_image}, Matched: {matched_image}, URL: {photoUrl}")
 
- 
                 formatted_therapist = {
                     "id": therapist["id"],
                     "name": f"{therapist['first_name']} {therapist['last_name']}",

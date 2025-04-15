@@ -293,9 +293,11 @@ fun TherapistListItem(therapist: TherapistListItem, onClick: () -> Unit) {
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
+                val fullImageUrl = retrofitClient.getFullImageUrl(therapist.photoUrl)
+
                 Image(
                     painter = rememberAsyncImagePainter(
-                        model = therapist.photoUrl.ifEmpty { "https://via.placeholder.com/80" }
+                        model = fullImageUrl.ifEmpty { "https://via.placeholder.com/80" }
                     ),
                     contentDescription = "Therapist photo",
                     modifier = Modifier.fillMaxSize(),

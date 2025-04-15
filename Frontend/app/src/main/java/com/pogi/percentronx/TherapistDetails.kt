@@ -88,6 +88,7 @@ fun TherapistDetailsScreen(
         } catch (e: Exception) {
             isLoading = false
             errorMessage = "Error loading therapist details: ${e.message}"
+            e.printStackTrace()
         }
     }
 
@@ -147,6 +148,7 @@ fun TherapistDetailsScreen(
                                 } catch (e: Exception) {
                                     isLoading = false
                                     errorMessage = "Error loading therapist details: ${e.message}"
+                                    e.printStackTrace()
                                 }
                             }
                         }) {
@@ -175,9 +177,11 @@ fun TherapistDetailsScreen(
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.background)
                                 ) {
+                                    val fullImageUrl = retrofitClient.getFullImageUrl(theTherapist.photoUrl)
+
                                     Image(
                                         painter = rememberAsyncImagePainter(
-                                            model = theTherapist.photoUrl.ifEmpty { "https://via.placeholder.com/120" }
+                                            model = fullImageUrl.ifEmpty { "https://via.placeholder.com/120" }
                                         ),
                                         contentDescription = "Therapist photo",
                                         modifier = Modifier.fillMaxSize(),
@@ -232,6 +236,7 @@ fun TherapistDetailsScreen(
                                 }
                             }
                         }
+
                         TabRow(
                             selectedTabIndex = selectedTabIndex
                         ) {

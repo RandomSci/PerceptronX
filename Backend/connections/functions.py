@@ -10,22 +10,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path as FilePath
 from fastapi import *
 from ultralytics import YOLO
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import cv2, matplotlib.pyplot as plt, pandas as pd, torch, bcrypt, user_agents, datetime
 from datetime import timedelta
 from contextlib import asynccontextmanager
 import uvicorn, secrets, qrcode, io, socket, time
 import json
+import aiofiles
 
 class AppointmentRequest(BaseModel):
-    therapistId: int
-    date: str
-    time: str
+    therapist_id: int
+    date: str  # Format: YYYY-MM-DD
+    time: str  # Format: HH:MM AM/PM
     type: str
     notes: Optional[str] = None
     insuranceProvider: Optional[str] = None
     insuranceMemberId: Optional[str] = None
 
+
+class AppointmentResponse(BaseModel):
+    status: str  # "Approved" or "Rejected"
+    reason: Optional[str] = None  # Reason for rejection
+
+
+class AppointmentRequestListItem(BaseModel):
+    request_id: int
+    date: str
+    time: str
+    status: str
+    user_name: str
+    notes: Optional[str] = None
 class MessageRequest(BaseModel):
     recipient_id: int
     recipient_type: str = "therapist"

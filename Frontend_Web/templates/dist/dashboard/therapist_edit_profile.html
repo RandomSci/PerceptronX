@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- [Head] start -->
+
 
 <head>
   <title>Edit Profile | APR-CV</title>
-  <!-- [Meta] -->
+  
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -12,24 +12,24 @@
   <meta name="keywords" content="PT, Physical Therapy, Rehab, Patient Management">
   <meta name="author" content="APR-CV Team">
 
-  <!-- [Favicon] icon -->
+  
   <link rel="icon" href="../static/assets/images/favicon.svg" type="image/x-icon">
-  <!-- [Google Font] Family -->
+  
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" id="main-font-link">
-  <!-- [Tabler Icons] https://tablericons.com -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/tabler-icons.min.css">
-  <!-- [Feather Icons] https://feathericons.com -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/feather.css">
-  <!-- [Font Awesome Icons] https://fontawesome.com/icons -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/fontawesome.css">
-  <!-- [Material Icons] https://fonts.google.com/icons -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/material.css">
-  <!-- [Template CSS Files] -->
+  
   <link rel="stylesheet" href="../static/assets/css/style.css" id="main-style-link">
   <link rel="stylesheet" href="../static/assets/css/style-preset.css">
-  <!-- [Leaflet Map] -->
+  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <!-- [Select2] -->
+  
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <style>
     .user-avtar {
@@ -156,18 +156,18 @@
     }
   </style>
 </head>
-<!-- [Head] end -->
-<!-- [Body] Start -->
+
+
 
 <body data-pc-preset="preset-1" data-pc-direction="ltr" data-pc-theme="light">
-  <!-- [ Pre-loader ] start -->
+  
   <div class="loader-bg">
     <div class="loader-track">
       <div class="loader-fill"></div>
     </div>
   </div>
-  <!-- [ Pre-loader ] End -->
-  <!-- [ Sidebar Menu ] start -->
+  
+  
   <nav class="pc-sidebar">
     <div class="navbar-wrapper">
       <div class="m-header">
@@ -263,12 +263,12 @@
       </div>
     </div>
   </nav>
-  <!-- [ Sidebar Menu ] end --> <!-- [ Header Topbar ] start -->
+   
   <header class="pc-header">
-    <div class="header-wrapper"> <!-- [Mobile Media Block] start -->
+    <div class="header-wrapper"> 
       <div class="me-auto pc-mob-drp">
         <ul class="list-unstyled">
-          <!-- ======= Menu collapse Icon ===== -->
+          
           <li class="pc-h-item pc-sidebar-collapse">
             <a href="#" class="pc-head-link ms-0" id="sidebar-hide">
               <i class="ti ti-menu-2"></i>
@@ -305,7 +305,7 @@
           </li>
         </ul>
       </div>
-      <!-- [Mobile Media Block end] -->
+      
       <div class="ms-auto">
         <ul class="list-unstyled">
           <li class="dropdown pc-h-item">
@@ -328,7 +328,7 @@
               <div class="dropdown-divider"></div>
               <div class="dropdown-header px-0 text-wrap header-notification-scroll position-relative" style="max-height: calc(100vh - 215px)">
                 <div class="list-group list-group-flush w-100">
-                  <!-- Messages would go here -->
+                  
                 </div>
               </div>
               <div class="dropdown-divider"></div>
@@ -434,14 +434,14 @@
       </div>
     </div>
   </header>
-  <!-- [ Header ] end -->
+  
 
 
 
-  <!-- [ Main Content ] start -->
+  
   <div class="pc-container">
     <div class="pc-content">
-      <!-- [ breadcrumb ] start -->
+      
       <div class="page-header">
         <div class="page-block">
           <div class="row align-items-center">
@@ -458,9 +458,9 @@
           </div>
         </div>
       </div>
-      <!-- [ breadcrumb ] end -->
+      
 
-      <!-- [ Main Content ] start -->
+      
       <div class="row">
         <div class="col-md-12">
           <div class="card">
@@ -468,7 +468,7 @@
               <h5>Update Your Profile</h5>
             </div>
             <div class="card-body">
-              <!-- Profile Sections Navigation -->
+              
               <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                   <button class="nav-link active" id="personal-info-tab" data-bs-toggle="tab" data-bs-target="#personal-info" type="button" role="tab" aria-controls="personal-info" aria-selected="true">Personal Info</button>
@@ -482,10 +482,10 @@
               </ul>
               <form action="/profile/update2" method="post" enctype="multipart/form-data" id="profileForm">
                 <div class="tab-content" id="profileTabContent">
-                  <!-- Personal Information Tab -->
+                  
                   <div class="tab-pane fade show active" id="personal-info" role="tabpanel" aria-labelledby="personal-info-tab">
                     <div class="row">
-                      <!-- Profile Photo Section -->
+                      
                       <div class="col-md-12 mb-4 text-center">
                         <label for="profile_image" class="image-upload-label">
                           <img src="/static/assets/images/user/{{ therapist.profile_image }}" alt="Profile Image" class="profile-image-preview" id="profileImagePreview">
@@ -497,7 +497,7 @@
                         <p class="text-muted mt-2">Click on the image to change your profile photo</p>
                       </div>
                       
-                      <!-- Basic Info Section -->
+                      
                       <div class="col-md-12">
                         <h6 class="mb-3 text-primary">Basic Information</h6>
                       </div>
@@ -558,10 +558,10 @@
                     </div>
                   </div>
                   
-                  <!-- Professional Details Tab -->
+                  
                   <div class="tab-pane fade" id="professional" role="tabpanel" aria-labelledby="professional-tab">
                     <div class="row">
-                      <!-- Specializations Section -->
+                      
                       <div class="col-md-12">
                         <h6 class="mb-3 text-primary">Specializations & Qualifications</h6>
                       </div>
@@ -618,10 +618,10 @@
                     </div>
                   </div>
                   
-                  <!-- Location Tab -->
+                  
                   <div class="tab-pane fade" id="location" role="tabpanel" aria-labelledby="location-tab">
                     <div class="row">
-                      <!-- Location Section -->
+                      
                       <div class="col-md-12">
                         <h6 class="mb-3 text-primary">Practice Location</h6>
                       </div>
@@ -653,7 +653,7 @@
               
               <script>
               document.addEventListener('DOMContentLoaded', function() {
-                // Image preview functionality
+
                 const profileImage = document.getElementById('profile_image');
                 const imagePreview = document.getElementById('profileImagePreview');
                 
@@ -675,7 +675,7 @@
                   console.error("Profile image elements not found!");
                 }
                 
-                // Tab navigation
+
                 const nextToProfessional = document.getElementById('nextToProfessional');
                 const nextToLocation = document.getElementById('nextToLocation');
                 const backToPersonal = document.getElementById('backToPersonal');
@@ -714,11 +714,11 @@
           </div>
         </div>
       </div>
-      <!-- [ Main Content ] end -->
+      
     </div>
   </div>
 
-  <!-- Required Js -->
+  
   <script src="../static/assets/js/plugins/popper.min.js"></script>
   <script src="../static/assets/js/plugins/simplebar.min.js"></script>
   <script src="../static/assets/js/plugins/bootstrap.min.js"></script>
@@ -726,18 +726,18 @@
   <script src="../static/assets/js/pcoded.js"></script>
   <script src="../static/assets/js/plugins/feather.min.js"></script>
   
-  <!-- jQuery -->
+  
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   
-  <!-- Select2 -->
+  
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   
-  <!-- Leaflet Map JS -->
+  
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Tab Navigation
+
       document.getElementById('nextToProfessional').addEventListener('click', function() {
         document.getElementById('professional-tab').click();
       });
@@ -754,14 +754,14 @@
         document.getElementById('professional-tab').click();
       });
       
-      // Initialize Select2
+
       $('.select2-tags').select2({
         tags: true,
         tokenSeparators: [','],
         placeholder: 'Select or add new items'
       });
       
-      // Profile image preview
+
       document.getElementById('profile_image').addEventListener('change', function(e) {
         if (e.target.files && e.target.files[0]) {
           const reader = new FileReader();
@@ -774,7 +774,7 @@
         }
       });
       
-      // Initialize map
+
       const defaultLat = {{ therapist.latitude or 0 }};
       const defaultLng = {{ therapist.longitude or 0 }};
       
@@ -787,13 +787,13 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
       
-      // Add marker if coordinates exist
+
       let marker;
       if (defaultLat && defaultLng) {
         marker = L.marker([defaultLat, defaultLng]).addTo(map);
       }
       
-      // Update coordinates on map click
+
       map.on('click', function(e) {
         if (marker) {
           map.removeLayer(marker);
@@ -805,7 +805,7 @@
         document.getElementById('longitude').value = e.latlng.lng.toFixed(6);
       });
       
-      // Address search functionality
+
       const addressSearchInput = document.getElementById('address_search');
       const addressSearchResults = document.getElementById('address_search_results');
       const addressInput = document.getElementById('address');
@@ -818,7 +818,7 @@
           return;
         }
         
-        // Nominatim search API for OpenStreetMap
+
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchTerm)}&limit=5`)
           .then(response => response.json())
           .then(data => {
@@ -836,7 +836,7 @@
                   document.getElementById('latitude').value = result.lat;
                   document.getElementById('longitude').value = result.lon;
                   
-                  // Update map
+
                   if (marker) {
                     map.removeLayer(marker);
                   }
@@ -845,7 +845,7 @@
                   map.setView(latlng, 13);
                   marker = L.marker(latlng).addTo(map);
                   
-                  // Clear search and hide results
+
                   addressSearchInput.value = '';
                   addressSearchResults.style.display = 'none';
                 });
@@ -861,18 +861,18 @@
           });
       }, 500));
       
-      // Hide search results when clicking outside
+
       document.addEventListener('click', function(e) {
         if (!addressSearchInput.contains(e.target) && !addressSearchResults.contains(e.target)) {
           addressSearchResults.style.display = 'none';
         }
       });
       
-      // Form submission handling
+
       document.getElementById('profileForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // Convert Select2 values to JSON strings for submission
+
         const specialtiesSelect = document.getElementById('specialties');
         const educationSelect = document.getElementById('education');
         const languagesSelect = document.getElementById('languages');
@@ -885,7 +885,7 @@
         const educationJson = JSON.stringify(educationValues);
         const languagesJson = JSON.stringify(languagesValues);
         
-        // Create hidden fields with JSON values
+
         const specialtiesInput = document.createElement('input');
         specialtiesInput.type = 'hidden';
         specialtiesInput.name = 'specialties';
@@ -901,21 +901,21 @@
         languagesInput.name = 'languages';
         languagesInput.value = languagesJson;
         
-        // Replace existing selects with hidden inputs
+
         specialtiesSelect.disabled = true;
         educationSelect.disabled = true;
         languagesSelect.disabled = true;
         
-        // Add hidden fields to form
+
         this.appendChild(specialtiesInput);
         this.appendChild(educationInput);
         this.appendChild(languagesInput);
         
-        // Submit the form
+
         this.submit();
       });
       
-      // Utility function for debouncing
+
       function debounce(func, wait) {
         let timeout;
         return function() {
@@ -931,6 +931,6 @@
   </script>
 
 </body>
-<!-- [Body] end -->
+
 
 </html>

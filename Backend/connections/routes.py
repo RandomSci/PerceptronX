@@ -199,7 +199,23 @@ app.add_middleware(PlatformRoutingMiddleware)
 
 @app.on_event("startup")
 async def startup_event():
-    await test_redis_connection()
+    print("Testing Redis connection...")
+    try:
+        await r.set("startup_test_key", "test_value")
+        test_value = await r.get("startup_test_key")
+        print(f"Redis connection test result: {test_value}")
+        
+        await r.hset("startup_test_hash", mapping={"test_field": "test_value"})
+        hash_value = await r.hgetall("startup_test_hash")
+        print(f"Redis hash operation test result: {hash_value}")
+        
+        await r.delete("startup_test_key", "startup_test_hash")
+        
+        print("Redis connection and operations successfully tested")
+    except Exception as e:
+        print(f"ERROR: Redis connection failed: {e}")
+        print("APPLICATION WARNING: Session management will not work correctly!")
+
 
 router = APIRouter()
 app.include_router(router)
@@ -2557,6 +2573,335 @@ def Routes():
             return RedirectResponse(url="/Therapist_Login")
 
 
+
+
+    @app.post("/exercises/add")
+    async def add_exercise(
+        request: Request,
+        name: str = Form(...),
+        category_id: Optional[int] = Form(None),
+        description: Optional[str] = Form(None),
+        video_source: Optional[str] = Form(None),
+        video_url: Optional[str] = Form(None),
+        difficulty: Optional[str] = Form(None),
+        duration: Optional[int] = Form(None),
+        instructions: Optional[str] = Form(None),
+        video_upload: Optional[UploadFile] = File(None),
+        user = Depends(get_current_user)
+    ):
+        """Route to handle adding a new exercise with large file upload support"""
+        db = get_Mysql_db()
+        cursor = None
+        
+        try:
+            cursor = db.cursor()
+            
+
+            final_video_url = None
+            video_type = 'none'
+            video_size = None
+            video_filename = None
+            
+
+            if video_source == 'youtube' and video_url:
+                final_video_url = video_url
+                video_type = 'youtube'
+            
+
+            elif video_source == 'upload' and video_upload and video_upload.filename:
+
+                current_file = Path(__file__).resolve()
+                project_root = current_file.parent.parent.parent
+                uploads_dir = project_root / "Frontend_Web" / "static" / "assets" / "videos" / "exercises"
+                uploads_dir.mkdir(parents=True, exist_ok=True)
+                
+
+                video_filename = video_upload.filename
+                
+
+                file_extension = video_filename.split(".")[-1].lower()
+                unique_filename = f"exercise_{int(time.time())}_{secrets.token_hex(4)}.{file_extension}"
+                file_path = uploads_dir / unique_filename
+                
+
+                video_content = await video_upload.read()
+                video_size = len(video_content)
+                
+
+                async with aiofiles.open(file_path, "wb") as f:
+                    await f.write(video_content)
+                
+
+                final_video_url = f"/static/assets/videos/exercises/{unique_filename}"
+                video_type = 'upload'
+            
+
+            cursor.execute(
+                """INSERT INTO Exercises 
+                (name, category_id, description, video_url, video_type, video_size, video_filename, 
+                difficulty, duration, instructions) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (name, category_id, description, final_video_url, video_type, video_size, 
+                video_filename, difficulty, duration, instructions)
+            )
+            db.commit()
+            
+            return RedirectResponse(url="/exercises", status_code=303)
+        except Exception as e:
+            if db:
+                db.rollback()
+            print(f"Error adding exercise: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            
+            categories = await get_exercise_categories()
+            
+            therapist_data = await get_therapist_data(user["user_id"])
+            return templates.TemplateResponse(
+                "dist/exercises/add_exercise.html", 
+                {
+                    "request": request,
+                    "error": f"Error adding exercise: {str(e)}",
+                    "categories": categories,
+                    "first_name": therapist_data["first_name"],
+                    "last_name": therapist_data["last_name"]
+                },
+                status_code=400
+            )
+        finally:
+            if cursor:
+                cursor.close()
+            if db:
+                db.close()
+                
+    @app.get("/exercises/{exercise_id}/edit")
+    async def edit_exercise_form(
+        request: Request,
+        exercise_id: int,
+        user = Depends(get_current_user)
+    ):
+        """Route to display the edit exercise form"""
+        db = get_Mysql_db()
+        cursor = None
+        
+        try:
+            cursor = db.cursor(dictionary=True)
+            
+            cursor.execute("SELECT * FROM Exercises WHERE exercise_id = %s", (exercise_id,))
+            exercise = cursor.fetchone()
+            
+            if not exercise:
+                return RedirectResponse(url="/exercises", status_code=303)
+            
+            cursor.execute("SELECT * FROM ExerciseCategories ORDER BY name")
+            categories = cursor.fetchall()
+            
+            therapist_data = await get_therapist_data(user["user_id"])
+            
+            return templates.TemplateResponse(
+                "dist/exercises/edit_exercise.html", 
+                {
+                    "request": request,
+                    "exercise": exercise,
+                    "categories": categories,
+                    "first_name": therapist_data["first_name"],
+                    "last_name": therapist_data["last_name"]
+                }
+            )
+        except Exception as e:
+            print(f"Error loading edit exercise form: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/exercises", status_code=303)
+        finally:
+            if cursor:
+                cursor.close()
+            if db:
+                db.close()
+
+    @app.post("/exercises/{exercise_id}/edit")
+    async def update_exercise(
+        request: Request,
+        exercise_id: int,
+        name: str = Form(...),
+        category_id: Optional[int] = Form(None),
+        description: Optional[str] = Form(None),
+        difficulty: Optional[str] = Form(None),
+        duration: Optional[int] = Form(None),
+        instructions: Optional[str] = Form(None),
+        keep_current_video: Optional[str] = Form(None),
+        video_source: Optional[str] = Form(None),
+        video_url: Optional[str] = Form(None),
+        video_upload: Optional[UploadFile] = File(None),
+        user = Depends(get_current_user)
+    ):
+        """Route to handle updating an exercise"""
+        db = get_Mysql_db()
+        cursor = None
+        
+        try:
+            cursor = db.cursor(dictionary=True)
+            
+            cursor.execute("SELECT * FROM Exercises WHERE exercise_id = %s", (exercise_id,))
+            exercise = cursor.fetchone()
+            
+            if not exercise:
+                return RedirectResponse(url="/exercises")
+            
+
+            final_video_url = exercise['video_url']  # Keep existing by default
+            video_type = exercise.get('video_type', 'none') # Keep existing type
+            video_size = exercise.get('video_size', None)  # Keep existing size
+            video_filename = exercise.get('video_filename', None)  # Keep existing filename
+            
+
+            if not keep_current_video:
+                if video_source == 'youtube' and video_url:
+                    final_video_url = video_url
+                    video_type = 'youtube'
+                    video_size = None
+                    video_filename = None
+                    
+                elif video_source == 'upload' and video_upload and video_upload.filename:
+
+                    current_file = Path(__file__).resolve()
+                    project_root = current_file.parent.parent.parent
+                    uploads_dir = project_root / "Frontend_Web" / "static" / "assets" / "videos" / "exercises"
+                    uploads_dir.mkdir(parents=True, exist_ok=True)
+                    
+
+                    video_filename = video_upload.filename
+                    
+
+                    file_extension = video_filename.split(".")[-1].lower()
+                    unique_filename = f"exercise_{exercise_id}_{int(time.time())}_{secrets.token_hex(4)}.{file_extension}"
+                    file_path = uploads_dir / unique_filename
+                    
+
+                    video_content = await video_upload.read()
+                    video_size = len(video_content)
+                    
+
+                    async with aiofiles.open(file_path, "wb") as f:
+                        await f.write(video_content)
+                    
+
+                    old_video_url = exercise['video_url']
+                    old_video_type = exercise.get('video_type', '')
+                    
+                    if old_video_url and old_video_type == 'upload':
+                        try:
+                            old_video_path = Path(project_root) / "Frontend_Web" / old_video_url.lstrip('/')
+                            if os.path.exists(old_video_path):
+                                os.remove(old_video_path)
+                                print(f"Deleted old video: {old_video_path}")
+                        except Exception as e:
+                            print(f"Error deleting old video: {e}")
+                    
+
+                    final_video_url = f"/static/assets/videos/exercises/{unique_filename}"
+                    video_type = 'upload'
+                else:
+
+                    final_video_url = None
+                    video_type = 'none'
+                    video_size = None
+                    video_filename = None
+            
+
+            cursor.execute(
+                """UPDATE Exercises 
+                SET name = %s, category_id = %s, description = %s, 
+                    video_url = %s, video_type = %s, video_size = %s, video_filename = %s,
+                    difficulty = %s, duration = %s, instructions = %s, 
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE exercise_id = %s""",
+                (name, category_id, description, final_video_url, video_type, video_size, 
+                video_filename, difficulty, duration, instructions, exercise_id)
+            )
+            db.commit()
+            
+            return RedirectResponse(url=f"/exercises", status_code=303)
+        except Exception as e:
+            if db:
+                db.rollback()
+            print(f"Error updating exercise: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            
+            categories = []
+            try:
+                cursor.execute("SELECT * FROM ExerciseCategories ORDER BY name")
+                categories = cursor.fetchall()
+            except:
+                pass
+            
+            therapist_data = await get_therapist_data(user["user_id"])
+            
+            return templates.TemplateResponse(
+                "dist/exercises/edit_exercise.html", 
+                {
+                    "request": request,
+                    "exercise": exercise,
+                    "categories": categories,
+                    "first_name": therapist_data["first_name"],
+                    "last_name": therapist_data["last_name"],
+                    "error": f"Error updating exercise: {str(e)}"
+                },
+                status_code=400
+            )
+        finally:
+            if cursor:
+                cursor.close()
+            if db:
+                db.close()
+
+    @app.post("/exercises/delete")
+    async def delete_exercise(
+        request: Request,
+        exercise_id: int = Form(...),
+        user = Depends(get_current_user)
+    ):
+        """Route to delete an exercise"""
+        db = get_Mysql_db()
+        cursor = None
+        
+        try:
+            cursor = db.cursor(dictionary=True)
+            
+            cursor.execute(
+                "SELECT video_url, video_type FROM Exercises WHERE exercise_id = %s", 
+                (exercise_id,)
+            )
+            exercise = cursor.fetchone()
+            
+            if exercise and exercise['video_url'] and exercise.get('video_type') == 'upload':
+                try:
+                    current_file = Path(__file__).resolve()
+                    project_root = current_file.parent.parent.parent
+                    video_path = project_root / "Frontend_Web" / exercise['video_url'].lstrip('/')
+                    
+                    if os.path.exists(video_path):
+                        os.remove(video_path)
+                        print(f"Deleted video file: {video_path}")
+                except Exception as e:
+                    print(f"Error deleting video file: {e}")
+            
+            cursor.execute(
+                "DELETE FROM Exercises WHERE exercise_id = %s", 
+                (exercise_id,)
+            )
+            db.commit()
+            
+            return RedirectResponse(url="/exercises", status_code=303)
+        except Exception as e:
+            if db:
+                db.rollback()
+            print(f"Error deleting exercise: {e}")
+            return RedirectResponse(url="/exercises", status_code=303)
+        finally:
+            if cursor:
+                cursor.close()
+            if db:
+                db.close()
+    
     @app.post("/api/exercises/rate")
     async def rate_exercise(
         request: Request,
@@ -2752,12 +3097,309 @@ def Routes():
                     "appointments": appointments,
                     "metrics": metrics,
                     "first_name": therapist_data["first_name"],
-                    "last_name": therapist_data["last_name"]
+                    "last_name": therapist_data["last_name"],
+                    "today": datetime.datetime.now().date()
                 }
             )
         finally:
             cursor.close()
             db.close()
+            
+    @app.get("/treatment-plans/{plan_id}/edit")
+    async def edit_treatment_plan_form(request: Request, plan_id: int):
+        """Route to display the edit treatment plan form"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
+        
+        try:
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
+            
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor(dictionary=True)
+                
+
+                cursor.execute(
+                    """SELECT tp.*, p.first_name as patient_first_name, p.last_name as patient_last_name
+                    FROM TreatmentPlans tp
+                    JOIN Patients p ON tp.patient_id = p.patient_id
+                    WHERE tp.plan_id = %s AND tp.therapist_id = %s""",
+                    (plan_id, session_data["user_id"])
+                )
+                plan = cursor.fetchone()
+                
+                if not plan:
+                    return RedirectResponse(url="/treatment-plans", status_code=303)
+                
+
+                cursor.execute(
+                    """SELECT tpe.*, e.name as exercise_name, e.difficulty, e.duration as exercise_duration
+                    FROM TreatmentPlanExercises tpe
+                    JOIN Exercises e ON tpe.exercise_id = e.exercise_id
+                    WHERE tpe.plan_id = %s
+                    ORDER BY tpe.plan_exercise_id""",
+                    (plan_id,)
+                )
+                plan_exercises = cursor.fetchall()
+                
+
+                cursor.execute(
+                    "SELECT patient_id, first_name, last_name FROM Patients WHERE therapist_id = %s",
+                    (session_data["user_id"],)
+                )
+                patients = cursor.fetchall()
+                
+
+                cursor.execute("SELECT * FROM Exercises ORDER BY name")
+                exercises = cursor.fetchall()
+                
+
+                therapist_data = await get_therapist_data(session_data["user_id"])
+                
+                return templates.TemplateResponse(
+                    "dist/treatment_plans/edit_plan.html",
+                    {
+                        "request": request,
+                        "plan": plan,
+                        "plan_exercises": plan_exercises,
+                        "patients": patients,
+                        "exercises": exercises,
+                        "first_name": therapist_data["first_name"],
+                        "last_name": therapist_data["last_name"]
+                    }
+                )
+            except Exception as e:
+                print(f"Error loading edit treatment plan form: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(url="/treatment-plans", status_code=303)
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+        except Exception as e:
+            print(f"Unexpected error in edit treatment plan form: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/front-page", status_code=303)
+
+    @app.post("/treatment-plans/{plan_id}/edit")
+    async def update_treatment_plan(request: Request, plan_id: int):
+        """Route to handle updating a treatment plan"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
+        
+        try:
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
+            
+
+            form = await request.form()
+            print("RECEIVED FORM DATA FOR UPDATE:", dict(form))
+            
+
+            patient_id = form.get("patient_id")
+            plan_name = form.get("plan_name")
+            description = form.get("description", "")
+            start_date = form.get("start_date")
+            end_date = form.get("end_date")
+            status = form.get("status", "Active")
+            
+            print(f"Plan update details: ID={plan_id}, patient={patient_id}, name={plan_name}")
+            
+
+            if not patient_id or not plan_name or not start_date:
+                print("Missing required fields in update")
+                return RedirectResponse(f"/treatment-plans/{plan_id}/edit?error=missing_fields", status_code=303)
+            
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor()
+                
+
+                cursor.execute(
+                    "SELECT plan_id FROM TreatmentPlans WHERE plan_id = %s AND therapist_id = %s",
+                    (plan_id, session_data["user_id"])
+                )
+                if not cursor.fetchone():
+                    return RedirectResponse(url="/treatment-plans", status_code=303)
+                
+
+                cursor.execute(
+                    """UPDATE TreatmentPlans 
+                    SET patient_id = %s, name = %s, description = %s, 
+                        start_date = %s, end_date = %s, status = %s
+                    WHERE plan_id = %s""",
+                    (patient_id, plan_name, description, start_date, end_date, status, plan_id)
+                )
+                
+
+                existing_exercise_ids = form.getlist("existing_exercise_id")
+                keep_exercises = form.getlist("keep_exercise")
+                
+
+                cursor.execute(
+                    "SELECT plan_exercise_id FROM TreatmentPlanExercises WHERE plan_id = %s",
+                    (plan_id,)
+                )
+                current_exercise_ids = [row[0] for row in cursor.fetchall()]
+                
+
+                for ex_id in current_exercise_ids:
+                    if str(ex_id) not in keep_exercises:
+                        cursor.execute(
+                            "DELETE FROM TreatmentPlanExercises WHERE plan_exercise_id = %s",
+                            (ex_id,)
+                        )
+                        print(f"Deleted exercise ID: {ex_id}")
+                
+
+                for i, ex_id in enumerate(keep_exercises):
+                    if not ex_id:
+                        continue
+                        
+                    prefix = f"existing_{ex_id}_"
+                    ex_sets = form.get(f"{prefix}sets")
+                    ex_reps = form.get(f"{prefix}repetitions")
+                    ex_freq = form.get(f"{prefix}frequency")
+                    ex_duration = form.get(f"{prefix}duration")
+                    ex_notes = form.get(f"{prefix}notes")
+                    
+                    cursor.execute(
+                        """UPDATE TreatmentPlanExercises
+                        SET sets = %s, repetitions = %s, frequency = %s, 
+                            duration = %s, notes = %s
+                        WHERE plan_exercise_id = %s""",
+                        (ex_sets, ex_reps, ex_freq, ex_duration, ex_notes, ex_id)
+                    )
+                    print(f"Updated exercise ID: {ex_id}")
+                
+
+                new_exercises = form.getlist("new_exercise_id")
+                new_sets = form.getlist("new_sets")
+                new_reps = form.getlist("new_repetitions")
+                new_freq = form.getlist("new_frequency")
+                new_duration = form.getlist("new_duration")
+                new_notes = form.getlist("new_notes")
+                
+                for i, ex_id in enumerate(new_exercises):
+                    if not ex_id or ex_id == "":
+                        continue
+                        
+                    ex_sets = new_sets[i] if i < len(new_sets) else None
+                    ex_reps = new_reps[i] if i < len(new_reps) else None
+                    ex_freq = new_freq[i] if i < len(new_freq) else None
+                    ex_duration = new_duration[i] if i < len(new_duration) else None
+                    ex_notes = new_notes[i] if i < len(new_notes) else None
+                    
+                    cursor.execute(
+                        """INSERT INTO TreatmentPlanExercises
+                        (plan_id, exercise_id, sets, repetitions, frequency, duration, notes)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                        (plan_id, ex_id, ex_sets, ex_reps, ex_freq, ex_duration, ex_notes)
+                    )
+                    print(f"Added new exercise ID: {ex_id}")
+                
+                db.commit()
+                print(f"Treatment plan {plan_id} updated successfully")
+                
+                return RedirectResponse(url=f"/treatment-plans", status_code=303)
+            except Exception as e:
+                if db:
+                    db.rollback()
+                print(f"Database error in update treatment plan: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(f"/treatment-plans/{plan_id}/edit?error=db_error", status_code=303)
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+        except Exception as e:
+            print(f"Unexpected error in update treatment plan: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/front-page", status_code=303)
+
+    @app.post("/treatment-plans/delete")
+    async def delete_treatment_plan(request: Request):
+        """Route to delete a treatment plan"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
+        
+        try:
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
+            
+
+            form = await request.form()
+            plan_id_str = form.get("plan_id")
+            
+            print(f"Delete request for plan ID: {plan_id_str}")
+            
+            if not plan_id_str:
+                return RedirectResponse(url="/treatment-plans?error=no_plan_id", status_code=303)
+            
+            try:
+                plan_id = int(plan_id_str)
+            except ValueError:
+                return RedirectResponse(url="/treatment-plans?error=invalid_plan_id", status_code=303)
+            
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor()
+                
+
+                cursor.execute(
+                    "SELECT plan_id FROM TreatmentPlans WHERE plan_id = %s AND therapist_id = %s",
+                    (plan_id, session_data["user_id"])
+                )
+                if not cursor.fetchone():
+                    return RedirectResponse(url="/treatment-plans?error=not_found", status_code=303)
+                
+
+
+                cursor.execute(
+                    "DELETE FROM TreatmentPlanExercises WHERE plan_id = %s",
+                    (plan_id,)
+                )
+                
+
+                cursor.execute(
+                    "DELETE FROM TreatmentPlans WHERE plan_id = %s",
+                    (plan_id,)
+                )
+                
+                db.commit()
+                print(f"Treatment plan {plan_id} deleted successfully")
+                
+                return RedirectResponse(url="/treatment-plans?success=deleted", status_code=303)
+            except Exception as e:
+                if db:
+                    db.rollback()
+                print(f"Database error in delete treatment plan: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(url="/treatment-plans?error=db_error", status_code=303)
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+        except Exception as e:
+            print(f"Unexpected error in delete treatment plan: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/front-page", status_code=303)
 
     @app.get("/appointments")
     async def appointments_page(request: Request, user=Depends(get_current_user)):
@@ -2868,9 +3510,7 @@ def Routes():
                 """SELECT e.*, c.name as category_name 
                 FROM Exercises e
                 LEFT JOIN ExerciseCategories c ON e.category_id = c.category_id
-                WHERE e.therapist_id = %s
-                ORDER BY e.name""", 
-                (user["user_id"],)
+                """
             )
             exercises = cursor.fetchall()
 
@@ -2978,6 +3618,167 @@ def Routes():
         finally:
             cursor.close()
             db.close()
+            
+    @app.post("/treatment-plans/new")
+    async def create_treatment_plan(request: Request):
+        """Route to handle creating a new treatment plan with exercises"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
+        
+        try:
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
+            
+
+            form = await request.form()
+            print("RECEIVED FORM DATA:", dict(form))
+            
+
+            patient_id = form.get("patient_id")
+            plan_name = form.get("plan_name")  # Note: HTML form uses plan_name, not name
+            description = form.get("description", "")
+            start_date = form.get("start_date")
+            end_date = form.get("end_date")
+            status = form.get("status", "Active")
+            
+            print(f"Plan details: patient={patient_id}, name={plan_name}, start={start_date}, end={end_date}, status={status}")
+            
+
+            if not patient_id or not plan_name or not start_date:
+                error_msg = "Missing required fields: "
+                if not patient_id: error_msg += "patient, "
+                if not plan_name: error_msg += "plan name, "
+                if not start_date: error_msg += "start date"
+                
+                print(f"ERROR: {error_msg}")
+                
+
+                db = get_Mysql_db()
+                cursor = db.cursor(dictionary=True)
+                cursor.execute("SELECT patient_id, first_name, last_name FROM Patients WHERE therapist_id = %s", 
+                            (session_data["user_id"],))
+                patients = cursor.fetchall()
+                cursor.execute("SELECT * FROM Exercises")
+                exercises = cursor.fetchall()
+                cursor.close()
+                db.close()
+                
+                therapist_data = await get_therapist_data(session_data["user_id"])
+                
+                return templates.TemplateResponse(
+                    "dist/treatment_plans/new_plan.html", 
+                    {
+                        "request": request,
+                        "error": error_msg,
+                        "patients": patients,
+                        "exercises": exercises,
+                        "first_name": therapist_data["first_name"],
+                        "last_name": therapist_data["last_name"]
+                    }
+                )
+            
+
+            exercises = form.getlist("exercises[]")
+            sets = form.getlist("sets[]")
+            repetitions = form.getlist("repetitions[]")
+            frequencies = form.getlist("frequency[]")
+            durations = form.getlist("duration[]")
+            exercise_notes = form.getlist("exercise_notes[]")
+            
+            print(f"Exercises: {exercises}")
+            print(f"Sets: {sets}")
+            print(f"Repetitions: {repetitions}")
+            print(f"Frequencies: {frequencies}")
+            print(f"Durations: {durations}")
+            
+
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor()
+                
+
+                cursor.execute(
+                    """INSERT INTO TreatmentPlans 
+                    (patient_id, therapist_id, name, description, start_date, end_date, status) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (patient_id, session_data["user_id"], plan_name, description, start_date, end_date, status)
+                )
+                plan_id = cursor.lastrowid
+                print(f"Created plan with ID: {plan_id}")
+                
+
+                for i in range(len(exercises)):
+                    exercise_id = exercises[i] if i < len(exercises) else None
+                    
+                    if not exercise_id or exercise_id == "":
+                        print(f"Skipping empty exercise at index {i}")
+                        continue
+                        
+                    exercise_sets = sets[i] if i < len(sets) and sets[i] else None
+                    exercise_reps = repetitions[i] if i < len(repetitions) and repetitions[i] else None
+                    exercise_freq = frequencies[i] if i < len(frequencies) and frequencies[i] else None
+                    exercise_duration = durations[i] if i < len(durations) and durations[i] else None
+                    exercise_note = exercise_notes[i] if i < len(exercise_notes) else None
+                    
+                    print(f"Adding exercise: ID={exercise_id}, Sets={exercise_sets}, Reps={exercise_reps}, Freq={exercise_freq}, Duration={exercise_duration}")
+                    
+                    try:
+                        cursor.execute(
+                            """INSERT INTO TreatmentPlanExercises
+                            (plan_id, exercise_id, sets, repetitions, frequency, duration, notes)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                            (plan_id, exercise_id, exercise_sets, exercise_reps, exercise_freq, exercise_duration, exercise_note)
+                        )
+                        print(f"Successfully added exercise {exercise_id} to plan {plan_id}")
+                    except Exception as ex:
+                        print(f"Error adding exercise {exercise_id}: {ex}")
+
+                
+                db.commit()
+                print(f"Treatment plan {plan_id} created successfully with exercises")
+                return RedirectResponse(url="/treatment-plans", status_code=303)
+                
+            except Exception as e:
+                if db:
+                    db.rollback()
+                print(f"Database error: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                
+
+                cursor = db.cursor(dictionary=True)
+                cursor.execute("SELECT patient_id, first_name, last_name FROM Patients WHERE therapist_id = %s", 
+                            (session_data["user_id"],))
+                patients = cursor.fetchall()
+                cursor.execute("SELECT * FROM Exercises")
+                exercises = cursor.fetchall()
+                
+                therapist_data = await get_therapist_data(session_data["user_id"])
+                
+                return templates.TemplateResponse(
+                    "dist/treatment_plans/new_plan.html", 
+                    {
+                        "request": request,
+                        "error": f"Database error: {str(e)}",
+                        "patients": patients,
+                        "exercises": exercises,
+                        "first_name": therapist_data["first_name"],
+                        "last_name": therapist_data["last_name"]
+                    }
+                )
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+                
+        except Exception as e:
+            print(f"General error: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/front-page")
 
     @app.get("/treatment-plans/new")
     async def new_treatment_plan_page(request: Request, user=Depends(get_current_user)):
@@ -2991,13 +3792,11 @@ def Routes():
             )
             patients = cursor.fetchall()
 
-            cursor.execute(
-                "SELECT * FROM Exercises WHERE therapist_id = %s", 
-                (user["user_id"],)
-            )
+            cursor.execute("SELECT * FROM Exercises")
             exercises = cursor.fetchall()
 
             therapist_data = await get_therapist_data(user["user_id"])
+            print(f"exercises: {exercises}")
 
             return templates.TemplateResponse(
                 "dist/treatment_plans/new_plan.html", 
@@ -3006,7 +3805,7 @@ def Routes():
                     "patients": patients,
                     "exercises": exercises,
                     "first_name": therapist_data["first_name"],
-                    "last_name": therapist_data["last_name"]
+                    "last_name": therapist_data["last_name"],
                 }
             )
         finally:
@@ -3271,127 +4070,409 @@ def Routes():
     async def request_appointment(request: Request, appointment_request: AppointmentRequest):
         """API endpoint to request an appointment with a therapist"""
         session_id = request.cookies.get("session_id")
-        if not session_id:
-            return JSONResponse(
-                status_code=401,
-                content={"status": "invalid", "detail": "Not authenticated"}
-            )
+        print(f"Appointment request - Cookie session ID: {session_id}")
+        
+        
+        db = get_Mysql_db()
+        cursor = db.cursor()
 
         try:
-            session_data = await get_redis_session(session_id)
+            cursor.execute(
+                "SELECT id FROM Therapists WHERE id = %s",
+                (appointment_request.therapist_id,)
+            )
+            therapist = cursor.fetchone()
+            
+            if not therapist:
+                return JSONResponse(
+                    status_code=404,
+                    content={"status": "failed", "message": "Therapist not found"}
+                )
+            
+            user_info = None
+            user_id = None
+            
+            if session_id:
+                try:
+                    session_data = await get_session_data(session_id)
+                    if session_data and hasattr(session_data, 'user_id'):
+                        user_id = session_data.user_id
+                        cursor.execute(
+                            "SELECT username, email FROM users WHERE user_id = %s",
+                            (user_id,)
+                        )
+                        user_info = cursor.fetchone()
+                except Exception as e:
+                    print(f"Error getting session data: {e}")
+            
+            patient_id = None
+            
+            if user_info:
+                cursor.execute(
+                    "SELECT patient_id FROM Patients WHERE email = %s",
+                    (user_info[1],) 
+                )
+                patient_record = cursor.fetchone()
+                
+                if patient_record:
+                    patient_id = patient_record[0]
+                else:
+                    cursor.execute(
+                        """INSERT INTO Patients 
+                        (therapist_id, first_name, last_name, email) 
+                        VALUES (%s, %s, %s, %s)""",
+                        (appointment_request.therapist_id, user_info[0], "", user_info[1])
+                    )
+                    db.commit()
+                    patient_id = cursor.lastrowid
+            else:
+                cursor.execute(
+                    """INSERT INTO Patients 
+                    (therapist_id, first_name, last_name, email) 
+                    VALUES (%s, %s, %s, %s)""",
+                    (appointment_request.therapist_id, "Guest", "User", f"guest_{int(time.time())}@example.com")
+                )
+                db.commit()
+                patient_id = cursor.lastrowid
+            
+            time_parts = appointment_request.time.split()
+            time_str = time_parts[0] 
+            am_pm = time_parts[1] if len(time_parts) > 1 else "AM" 
+            
+            try:
+                time_obj = datetime.datetime.strptime(f"{time_str} {am_pm}", "%I:%M %p").time()
+            except ValueError:
+                try:
+                    time_obj = datetime.datetime.strptime(time_str, "%H:%M").time()
+                except ValueError:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"status": "failed", "message": "Invalid time format"}
+                    )
+            
+            duration = 60
+            
+            full_notes = f"Type: {appointment_request.type}\n"
+            if appointment_request.notes:
+                full_notes += f"Notes: {appointment_request.notes}\n"
+            if appointment_request.insuranceProvider:
+                full_notes += f"Insurance: {appointment_request.insuranceProvider}\n"
+            if appointment_request.insuranceMemberId:
+                full_notes += f"Member ID: {appointment_request.insuranceMemberId}"
+            
+            cursor.execute(
+                """INSERT INTO Appointments 
+                (patient_id, therapist_id, appointment_date, appointment_time, duration, notes, status) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (patient_id, appointment_request.therapist_id, appointment_request.date, 
+                time_obj, duration, full_notes, "Scheduled")
+            )
+            db.commit()
+            
+            return {"status": "success", "message": "Appointment scheduled successfully"}
+
+        except Exception as e:
+            db.rollback()
+            print(f"Database error in request appointment API: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={"status": "failed", "message": f"Error requesting appointment: {str(e)}"}
+            )
+        finally:
+            cursor.close()
+            db.close()
+
+
+    @app.post("/appointments/respond/{request_id}")
+    async def respond_to_appointment(
+        request: Request, 
+        request_id: int, 
+        response: AppointmentResponse
+    ):
+        """API endpoint for therapists to approve or reject appointment requests"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return JSONResponse(
+                status_code=401, 
+                content={"status": "invalid", "detail": "Not authenticated"}
+            )
+        
+        try:
+            session_data = await get_session_data(session_id)
             if not session_data:
                 return JSONResponse(
                     status_code=401,
                     content={"status": "invalid", "detail": "Not authenticated"}
                 )
-
-            user_id = session_data["user_id"]
+            
+            email = session_data.email
             
             db = get_Mysql_db()
             cursor = db.cursor()
-
+            
+            cursor.execute(
+                "SELECT id FROM Therapists WHERE company_email = %s",
+                (email,)
+            )
+            therapist_result = cursor.fetchone()
+            
+            if not therapist_result:
+                return JSONResponse(
+                    status_code=403,
+                    content={"status": "invalid", "detail": "Not authorized as a therapist"}
+                )
+            
+            therapist_id = therapist_result[0]
+            
+            cursor.execute(
+                """SELECT user_id, therapist_id, appointment_date, appointment_time, 
+                        duration, notes 
+                FROM AppointmentRequests 
+                WHERE request_id = %s AND status = 'Pending'""",
+                (request_id,)
+            )
+            request_data = cursor.fetchone()
+            
+            if not request_data:
+                return JSONResponse(
+                    status_code=404,
+                    content={"status": "invalid", "detail": "Appointment request not found or already processed"}
+                )
+            
+            req_user_id, req_therapist_id, date, time, duration, notes = request_data
+            
+            if therapist_id != req_therapist_id:
+                return JSONResponse(
+                    status_code=403,
+                    content={"status": "invalid", "detail": "You are not authorized to respond to this request"}
+                )
+            
             try:
- 
                 cursor.execute(
-                    "SELECT id FROM Therapists WHERE id = %s",
-                    (appointment_request.therapist_id,)
+                    "UPDATE AppointmentRequests SET status = %s WHERE request_id = %s",
+                    (response.status, request_id)
                 )
-                therapist = cursor.fetchone()
                 
-                if not therapist:
-                    return JSONResponse(
-                        status_code=404,
-                        content={"status": "invalid", "detail": "Therapist not found"}
+                if response.status == "Approved":
+                    cursor.execute(
+                        """SELECT COUNT(*) FROM Appointments 
+                        WHERE therapist_id = %s AND appointment_date = %s AND appointment_time = %s 
+                        AND status != 'Cancelled'""",
+                        (therapist_id, date, time)
                     )
-                
- 
-                cursor.execute(
-                    "SELECT patient_id FROM Patients WHERE user_id = %s",
-                    (user_id,)
-                )
-                patient_record = cursor.fetchone()
-                
-                patient_id = None
-                if patient_record:
-                    patient_id = patient_record[0]
-                else:
- 
+                    slot_taken = cursor.fetchone()[0] > 0
+                    
+                    if slot_taken:
+                        db.rollback()
+                        return JSONResponse(
+                            status_code=409,
+                            content={"status": "invalid", "detail": "This time slot is no longer available"}
+                        )
+                    
                     cursor.execute(
                         "SELECT username, email FROM users WHERE user_id = %s",
-                        (user_id,)
+                        (req_user_id,)
                     )
                     user_info = cursor.fetchone()
                     
-                    if not user_info:
-                        return JSONResponse(
-                            status_code=404,
-                            content={"status": "invalid", "detail": "User not found"}
-                        )
-                    
- 
                     cursor.execute(
-                        """INSERT INTO Patients 
-                        (therapist_id, user_id, first_name, last_name, email) 
-                        VALUES (%s, %s, %s, %s, %s)""",
-                        (appointment_request.therapist_id, user_id, user_info[0], "", user_info[1])
+                        "SELECT patient_id FROM Patients WHERE email = %s",
+                        (user_info[1],)  # Email
                     )
-                    db.commit()
-                    patient_id = cursor.lastrowid
+                    patient_record = cursor.fetchone()
+                    
+                    patient_id = None
+                    if patient_record:
+                        patient_id = patient_record[0]
+                    else:
+                        cursor.execute(
+                            """INSERT INTO Patients 
+                            (therapist_id, first_name, last_name, email) 
+                            VALUES (%s, %s, %s, %s)""",
+                            (therapist_id, user_info[0], "", user_info[1])
+                        )
+                        patient_id = cursor.lastrowid
+                    
+                    cursor.execute(
+                        """INSERT INTO Appointments 
+                        (patient_id, therapist_id, appointment_date, appointment_time, duration, notes, status) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                        (patient_id, therapist_id, date, time, duration, notes, "Scheduled")
+                    )
+                    
+                    message_content = f"Your appointment request for {date} at {time} has been approved."
+                else:
+                    message_content = f"Your appointment request for {date} at {time} has been declined."
+                    if response.reason:
+                        message_content += f" Reason: {response.reason}"
                 
- 
-                time_parts = appointment_request.time.split()
-                time_str = time_parts[0] 
-                am_pm = time_parts[1] if len(time_parts) > 1 else "AM" 
-                
-                time_obj = datetime.datetime.strptime(f"{time_str} {am_pm}", "%I:%M %p").time()
-                
- 
-                duration = 60
-                
- 
-                full_notes = f"Type: {appointment_request.type}\n"
-                if appointment_request.notes:
-                    full_notes += f"Notes: {appointment_request.notes}\n"
-                if appointment_request.insuranceProvider:
-                    full_notes += f"Insurance: {appointment_request.insuranceProvider}\n"
-                if appointment_request.insuranceMemberId:
-                    full_notes += f"Member ID: {appointment_request.insuranceMemberId}"
-                
- 
-                cursor.execute(
-                    """INSERT INTO Appointments 
-                    (patient_id, therapist_id, appointment_date, appointment_time, duration, notes, status) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                    (patient_id, appointment_request.therapist_id, appointment_request.date, 
-                    time_obj, duration, full_notes, "Scheduled")
-                )
-                db.commit()
-                
- 
                 cursor.execute(
                     """INSERT INTO Messages
                     (sender_id, sender_type, recipient_id, recipient_type, subject, content)
                     VALUES (%s, %s, %s, %s, %s, %s)""",
-                    (user_id, "user", appointment_request.therapist_id, "therapist", 
-                    "New Appointment Request", 
-                    f"A new appointment has been requested for {appointment_request.date} at {appointment_request.time}.")
+                    (therapist_id, "therapist", req_user_id, "user", 
+                    "Appointment Request Response", message_content)
                 )
-                db.commit()
                 
-                return {"status": "valid", "message": "Appointment requested successfully"}
-
+                db.commit()
+                return {"status": "valid", "message": f"Appointment request {response.status.lower()}"}
+                
             except Exception as e:
                 db.rollback()
-                print(f"Database error in request appointment API: {e}")
+                print(f"Database error in appointment response API: {e}")
                 return JSONResponse(
                     status_code=500,
-                    content={"status": "invalid", "detail": f"Error requesting appointment: {str(e)}"}
+                    content={"status": "invalid", "detail": f"Error processing response: {str(e)}"}
                 )
             finally:
                 cursor.close()
                 db.close()
         except Exception as e:
-            print(f"Error in request appointment API: {e}")
+            print(f"Error in appointment response API: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={"status": "invalid", "detail": f"Server error: {str(e)}"}
+            )
+
+
+    @app.get("/therapists/{id}/appointment-requests", response_model=List[AppointmentRequestListItem])
+    async def get_therapist_appointment_requests(request: Request, id: int, status: Optional[str] = None):
+        """API endpoint to get all appointment requests for a therapist"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return JSONResponse(
+                status_code=401, 
+                content={"status": "invalid", "detail": "Not authenticated"}
+            )
+        
+        try:
+            session_data = await get_session_data(session_id)
+            if not session_data:
+                return JSONResponse(
+                    status_code=401,
+                    content={"status": "invalid", "detail": "Not authenticated"}
+                )
+            
+            email = session_data.email
+            
+            db = get_Mysql_db()
+            cursor = db.cursor(dictionary=True)
+            
+            cursor.execute(
+                "SELECT id FROM Therapists WHERE company_email = %s",
+                (email,)
+            )
+            therapist_result = cursor.fetchone()
+            
+            if not therapist_result or therapist_result['id'] != id:
+                return JSONResponse(
+                    status_code=403,
+                    content={"status": "invalid", "detail": "Not authorized to view these requests"}
+                )
+            
+            query = """
+                SELECT ar.request_id, ar.appointment_date, ar.appointment_time, ar.status, ar.notes,
+                    u.username as user_name
+                FROM AppointmentRequests ar
+                JOIN users u ON ar.user_id = u.user_id
+                WHERE ar.therapist_id = %s
+            """
+            
+            params = [id]
+            
+            if status:
+                query += " AND ar.status = %s"
+                params.append(status)
+                
+            query += " ORDER BY ar.created_at DESC"
+            
+            cursor.execute(query, params)
+            requests = cursor.fetchall()
+            
+            formatted_requests = []
+            for req in requests:
+                time_str = req['appointment_time'].strftime("%I:%M %p")
+                
+                formatted_requests.append({
+                    "request_id": req['request_id'],
+                    "date": req['appointment_date'].strftime("%Y-%m-%d"),
+                    "time": time_str,
+                    "status": req['status'],
+                    "user_name": req['user_name'],
+                    "notes": req['notes']
+                })
+            
+            return formatted_requests
+            
+        except Exception as e:
+            print(f"Error in get therapist appointment requests API: {e}")
+            return JSONResponse(
+                status_code=500,
+                content={"status": "invalid", "detail": f"Server error: {str(e)}"}
+            )
+
+
+    @app.get("/users/appointment-requests")
+    async def get_user_appointment_requests(request: Request, status: Optional[str] = None):
+        """API endpoint to get all appointment requests for the logged-in user"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return JSONResponse(
+                status_code=401, 
+                content={"status": "invalid", "detail": "Not authenticated"}
+            )
+        
+        try:
+            session_data = await get_session_data(session_id)
+            if not session_data:
+                return JSONResponse(
+                    status_code=401,
+                    content={"status": "invalid", "detail": "Not authenticated"}
+                )
+            
+            user_id = session_data.user_id
+            
+            db = get_Mysql_db()
+            cursor = db.cursor(dictionary=True)
+            
+            query = """
+                SELECT ar.request_id, ar.appointment_date, ar.appointment_time, ar.status, ar.notes,
+                    CONCAT(t.first_name, ' ', t.last_name) as therapist_name
+                FROM AppointmentRequests ar
+                JOIN Therapists t ON ar.therapist_id = t.id
+                WHERE ar.user_id = %s
+            """
+            
+            params = [user_id]
+            
+            if status:
+                query += " AND ar.status = %s"
+                params.append(status)
+                
+            query += " ORDER BY ar.created_at DESC"
+            
+            cursor.execute(query, params)
+            requests = cursor.fetchall()
+            
+
+            formatted_requests = []
+            for req in requests:
+
+                time_str = req['appointment_time'].strftime("%I:%M %p")
+                
+                formatted_requests.append({
+                    "request_id": req['request_id'],
+                    "date": req['appointment_date'].strftime("%Y-%m-%d"),
+                    "time": time_str,
+                    "status": req['status'],
+                    "therapist_name": req['therapist_name'],
+                    "notes": req['notes']
+                })
+            
+            return formatted_requests
+            
+        except Exception as e:
+            print(f"Error in get user appointment requests API: {e}")
             return JSONResponse(
                 status_code=500,
                 content={"status": "invalid", "detail": f"Server error: {str(e)}"}

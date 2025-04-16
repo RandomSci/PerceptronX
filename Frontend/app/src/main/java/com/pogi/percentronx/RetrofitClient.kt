@@ -1,4 +1,3 @@
-// Update the Retrofit client to properly handle image URLs
 package com.pogi.percentronx
 
 import com.google.gson.GsonBuilder

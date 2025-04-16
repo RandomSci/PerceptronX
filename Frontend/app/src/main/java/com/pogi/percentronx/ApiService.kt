@@ -1,5 +1,6 @@
 package com.pogi.percentronx
 
+import com.google.gson.annotations.SerializedName
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -76,13 +77,18 @@ data class AvailableTimeSlot(
 )
 
 data class AppointmentRequest(
-    val therapistId: Int,
+    val therapist_id: Int,
     val date: String,
     val time: String,
     val type: String,
-    val notes: String?,
-    val insuranceProvider: String?,
-    val insuranceMemberId: String?
+    val notes: String? = null,
+    val insuranceProvider: String? = null,
+    val insuranceMemberId: String? = null
+)
+
+data class AppointmentResponse(
+    val status: String,
+    val message: String
 )
 
 data class MessageRequest(

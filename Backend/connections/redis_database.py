@@ -2,6 +2,7 @@ import redis.asyncio as redis
 import uuid
 import os
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 
@@ -13,8 +14,19 @@ SESSION_TTL = 63072000
 
 async def create_redis_session(data: dict):
     session_id = str(uuid.uuid4())
-    await r.hset(session_id, mapping=data)
-    return session_id
+    session_key = f"session:{session_id}"  
+    
+    try:
+        json_data = json.dumps(data)
+        await r.set(session_key, json_data, ex=SESSION_TTL)
+        
+        verification = await r.get(session_key)
+        print(f"Session verification: {verification}")
+        
+        return session_id
+    except Exception as e:
+        print(f"Error creating Redis session: {e}")
+        return None
     
 async def test_redis_connection():
     try:
@@ -27,18 +39,18 @@ async def test_redis_connection():
         return False
 
 async def get_redis_session(session_id: str):
-    """
-    Fetches user session data from Redis.
-    Args:
-    session_id (str): The session ID of the user.
-    Returns:
-    dict: The session data (user ID, etc.) if it exists, or None if expired or invalid.
-    """
-    session_data = await r.hgetall(session_id)
-    if not session_data:
-        print(f"Session ID {session_id} does not exist or has expired.")
+    try:
+        session_key = f"session:{session_id}"
+        json_data = await r.get(session_key)
+        
+        if not json_data:
+            print(f"Session ID {session_id} does not exist or has expired.")
+            return None
+            
+        return json.loads(json_data)
+    except Exception as e:
+        print(f"Error retrieving Redis session: {e}")
         return None
-    return {key: value for key, value in session_data.items()}
     
 async def delete_redis_session(session_id: str):
     """

@@ -21,3 +21,4 @@ ultralytics
 bcrypt
 mysql.connector
 fastcore==1.5.29
+aiofiles

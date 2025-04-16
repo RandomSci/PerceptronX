@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- [Head] start -->
+
 
 <head>
   <title>Home | APR-CV</title>
-  <!-- [Meta] -->
+  
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -12,34 +12,34 @@
   <meta name="keywords" content="PT, Physical Therapy, Rehab, Patient Management">
   <meta name="author" content="APR-CV Team">
 
-  <!-- [Favicon] icon -->
-  <link rel="icon" href="../static/assets/images/favicon.svg" type="image/x-icon"> <!-- [Google Font] Family -->
+  
+  <link rel="icon" href="../static/assets/images/favicon.svg" type="image/x-icon"> 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" id="main-font-link">
-<!-- [Tabler Icons] https://tablericons.com -->
+
 <link rel="stylesheet" href="../static/assets/fonts/tabler-icons.min.css" >
-<!-- [Feather Icons] https://feathericons.com -->
+
 <link rel="stylesheet" href="../static/assets/fonts/feather.css" >
-<!-- [Font Awesome Icons] https://fontawesome.com/icons -->
+
 <link rel="stylesheet" href="../static/assets/fonts/fontawesome.css" >
-<!-- [Material Icons] https://fonts.google.com/icons -->
+
 <link rel="stylesheet" href="../static/assets/fonts/material.css" >
-<!-- [Template CSS Files] -->
+
 <link rel="stylesheet" href="../static/assets/css/style.css" id="main-style-link" >
 <link rel="stylesheet" href="../static/assets/css/style-preset.css" >
 
 </head>
-<!-- [Head] end -->
-<!-- [Body] Start -->
+
+
 
 <body data-pc-preset="preset-1" data-pc-direction="ltr" data-pc-theme="light">
-  <!-- [ Pre-loader ] start -->
+  
 <div class="loader-bg">
   <div class="loader-track">
     <div class="loader-fill"></div>
   </div>
 </div>
-<!-- [ Pre-loader ] End -->
- <!-- [ Sidebar Menu ] start -->
+
+ 
 <nav class="pc-sidebar">
   <div class="navbar-wrapper">
     <div class="m-header">
@@ -91,7 +91,6 @@
           <ul class="pc-submenu">
             <li class="pc-item"><a class="pc-link" href="/exercises">Browse Exercises</a></li>
             <li class="pc-item"><a class="pc-link" href="/exercises/add">Upload New Exercise</a></li>
-            <li class="pc-item"><a class="pc-link" href="/exercises/categories">Exercise Categories</a></li>
           </ul>
         </li>
       
@@ -102,9 +101,8 @@
             <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
           </a>
           <ul class="pc-submenu">
-            <li class="pc-item"><a class="pc-link" href="/treatment-plans/create">Create Plan</a></li>
+            <li class="pc-item"><a class="pc-link" href="treatment-plans/new">Create Plan</a></li>
             <li class="pc-item"><a class="pc-link" href="/treatment-plans">Manage Plans</a></li>
-            <li class="pc-item"><a class="pc-link" href="/treatment-plans/templates">Templates</a></li>
           </ul>
         </li>
       
@@ -118,12 +116,12 @@
     </div>
   </div>
 </nav>
-<!-- [ Sidebar Menu ] end --> <!-- [ Header Topbar ] start -->
+ 
 <header class="pc-header">
-  <div class="header-wrapper"> <!-- [Mobile Media Block] start -->
+  <div class="header-wrapper"> 
 <div class="me-auto pc-mob-drp">
   <ul class="list-unstyled">
-    <!-- ======= Menu collapse Icon ===== -->
+    
     <li class="pc-h-item pc-sidebar-collapse">
       <a href="#" class="pc-head-link ms-0" id="sidebar-hide">
         <i class="ti ti-menu-2"></i>
@@ -160,7 +158,7 @@
     </li>
   </ul>
 </div>
-<!-- [Mobile Media Block end] -->
+
 <div class="ms-auto">
   <ul class="list-unstyled">
     <li class="dropdown pc-h-item">
@@ -219,14 +217,14 @@
         aria-haspopup="false"
         data-bs-auto-close="outside"
         aria-expanded="false">
-        <img src="/static/assets/images/user/avatar-2.jpg" alt="user-image" class="user-avtar">
+        <img src="/static/assets/images/user/therapist_11_1744631888.gif" alt="user-image" class="user-avtar">
         <span>{{ first_name }} {{ last_name }}</span>
       </a>
       <div class="dropdown-menu dropdown-user-profile dropdown-menu-end pc-h-dropdown">
         <div class="dropdown-header">
           <div class="d-flex mb-1">
             <div class="flex-shrink-0">
-              <img src="/static/assets/images/user/avatar-2.jpg" alt="user-image" class="user-avtar wid-35">
+              <img src="/static/assets/images/user/therapist_11_1744631888.gif" alt="user-image" class="user-avtar wid-35">
             </div>
             <div class="flex-grow-1 ms-3">
               <h6 class="mb-1">{{ first_name }} {{ last_name }}</h6>
@@ -307,14 +305,14 @@
 </div>
  </div>
 </header>
-<!-- [ Header ] end -->
 
 
 
-  <!-- [ Main Content ] start -->
+
+  
   <div class="pc-container">
     <div class="pc-content">
-      <!-- [ breadcrumb ] start -->
+      
       <div class="page-header">
         <div class="page-block">
           <div class="row align-items-center">
@@ -331,11 +329,11 @@
           </div>
         </div>
       </div>
-      <!-- [ breadcrumb ] end -->
-      <!-- [ Main Content ] start -->
+      
+      
       <div class="row">
-        <!-- [ sample-page ] start -->
-        <!-- Top Cards Section -->
+        
+        
         <div class="col-md-6 col-xl-3">
           <div class="card">
             <div class="card-body">
@@ -511,7 +509,7 @@
       </div>
     </div>
   </div>
-  <!-- [ Main Content ] end -->
+  
   <footer class="pc-footer">
     <div class="footer-wrapper container-fluid">
       <div class="row">
@@ -523,7 +521,7 @@
     </div>
   </footer>
 
-  <!-- Pass data from backend to frontend -->
+  
   <script>
     window.chartData = {{ chart_data|tojson }};
     window.monthlyChartData = {{ monthly_chart_data|tojson }};
@@ -531,10 +529,10 @@
     window.donutData = {{ donut_data|tojson }};
   </script>
 
-  <!-- [Page Specific JS] start -->
+  
   <script src="../static/assets/js/plugins/apexcharts.min.js"></script>
-  <!-- [Page Specific JS] end -->
-  <!-- Required Js -->
+  
+  
   <script src="../static/assets/js/plugins/popper.min.js"></script>
   <script src="../static/assets/js/plugins/simplebar.min.js"></script>
   <script src="../static/assets/js/plugins/bootstrap.min.js"></script>
@@ -548,7 +546,7 @@
   <script>preset_change("preset-1");</script>
   <script>font_change("Public-Sans");</script>
   
-  <!-- Dynamic dashboard JS instead of the default -->
+  
   <script src="../static/assets/js/dynamic-dashboard.js"></script>
  
   
@@ -577,7 +575,7 @@
     });
   </script>
 </body>
-<!-- [Body] end -->
+
 
 
 </html>

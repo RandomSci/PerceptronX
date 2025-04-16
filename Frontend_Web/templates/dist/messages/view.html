@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- [Head] start -->
+
 
 <head>
   <title>View Message | APR-CV</title>
-  <!-- [Meta] -->
+  
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -12,35 +12,35 @@
   <meta name="keywords" content="PT, Physical Therapy, Rehab, Patient Management">
   <meta name="author" content="APR-CV Team">
 
-  <!-- [Favicon] icon -->
+  
   <link rel="icon" href="../static/assets/images/favicon.svg" type="image/x-icon">
-  <!-- [Google Font] Family -->
+  
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" id="main-font-link">
-  <!-- [Tabler Icons] https://tablericons.com -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/tabler-icons.min.css">
-  <!-- [Feather Icons] https://feathericons.com -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/feather.css">
-  <!-- [Font Awesome Icons] https://fontawesome.com/icons -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/fontawesome.css">
-  <!-- [Material Icons] https://fonts.google.com/icons -->
+  
   <link rel="stylesheet" href="../static/assets/fonts/material.css">
-  <!-- [Template CSS Files] -->
+  
   <link rel="stylesheet" href="../static/assets/css/style.css" id="main-style-link">
   <link rel="stylesheet" href="../static/assets/css/style-preset.css">
 
 </head>
-<!-- [Head] end -->
-<!-- [Body] Start -->
+
+
 
 <body data-pc-preset="preset-1" data-pc-direction="ltr" data-pc-theme="light">
-  <!-- [ Pre-loader ] start -->
+  
   <div class="loader-bg">
     <div class="loader-track">
       <div class="loader-fill"></div>
     </div>
   </div>
-  <!-- [ Pre-loader ] End -->
-  <!-- [ Sidebar Menu ] start -->
+  
+  
   <nav class="pc-sidebar">
     <div class="navbar-wrapper">
       <div class="m-header">
@@ -119,14 +119,14 @@
       </div>
     </div>
   </nav>
-  <!-- [ Sidebar Menu ] end -->
-  <!-- [ Header Topbar ] start -->
+  
+  
   <header class="pc-header">
     <div class="header-wrapper">
-      <!-- [Mobile Media Block] start -->
+      
       <div class="me-auto pc-mob-drp">
         <ul class="list-unstyled">
-          <!-- ======= Menu collapse Icon ===== -->
+          
           <li class="pc-h-item pc-sidebar-collapse">
             <a href="#" class="pc-head-link ms-0" id="sidebar-hide">
               <i class="ti ti-menu-2"></i>
@@ -159,7 +159,7 @@
           </li>
         </ul>
       </div>
-      <!-- [Mobile Media Block end] -->
+      
       <div class="ms-auto">
         <ul class="list-unstyled">
           <li class="dropdown pc-h-item">
@@ -181,7 +181,7 @@
               <div class="dropdown-header px-0 text-wrap header-notification-scroll position-relative"
                 style="max-height: calc(100vh - 215px)">
                 <div class="list-group list-group-flush w-100">
-                  <!-- You'd typically include a loop here for recent messages -->
+                  
                 </div>
               </div>
               <div class="dropdown-divider"></div>
@@ -274,12 +274,12 @@
       </div>
     </div>
   </header>
-  <!-- [ Header ] end -->
+  
 
-  <!-- [ Main Content ] start -->
+  
   <div class="pc-container">
     <div class="pc-content">
-      <!-- [ breadcrumb ] start -->
+      
       <div class="page-header">
         <div class="page-block">
           <div class="row align-items-center">
@@ -296,9 +296,9 @@
           </div>
         </div>
       </div>
-      <!-- [ breadcrumb ] end -->
+      
 
-      <!-- [ Main Content ] start -->
+      
       <div class="row">
         <div class="col-md-12">
           <div class="card">
@@ -357,11 +357,11 @@
           </div>
         </div>
       </div>
-      <!-- [ Main Content ] end -->
+      
     </div>
   </div>
 
-  <!-- Delete Confirmation Modal -->
+  
   <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
       <div class="modal-content">
@@ -380,7 +380,7 @@
     </div>
   </div>
 
-  <!-- Required Js -->
+  
   <script src="../static/assets/js/plugins/popper.min.js"></script>
   <script src="../static/assets/js/plugins/simplebar.min.js"></script>
   <script src="../static/assets/js/plugins/bootstrap.min.js"></script>
@@ -390,7 +390,7 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Handle reply form submission
+
       const replyForm = document.getElementById('replyForm');
       if (replyForm) {
         replyForm.addEventListener('submit', function(e) {
@@ -406,7 +406,7 @@
           .then(response => response.json())
           .then(data => {
             if (data.success) {
-              // Redirect to the new message
+
               window.location.href = `/messages/${data.message_id}`;
             } else {
               alert('Error sending reply: ' + data.message);
@@ -419,7 +419,7 @@
         });
       }
 
-      // Handle delete message
+
       const deleteBtn = document.getElementById('deleteMessageBtn');
       const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
       const confirmDeleteBtn = document.getElementById('confirmDelete');
@@ -450,6 +450,6 @@
   </script>
 
 </body>
-<!-- [Body] end -->
+
 
 </html>

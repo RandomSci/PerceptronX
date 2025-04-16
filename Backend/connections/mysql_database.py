@@ -45,3 +45,21 @@ def Register_User_Web(first_name, last_name, company_email, password):
     finally:
         cursor.close()
         db.close()
+        
+async def get_exercise_categories():
+    db = get_Mysql_db()
+    cursor = None
+    
+    try:
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM ExerciseCategories ORDER BY name")
+        return cursor.fetchall()
+    except Exception as e:
+        print(f"Error fetching exercise categories: {e}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+            

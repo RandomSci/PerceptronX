@@ -3402,103 +3402,419 @@ def Routes():
             return RedirectResponse(url="/front-page", status_code=303)
 
     @app.get("/appointments")
-    async def appointments_page(request: Request, user=Depends(get_current_user)):
-        db = get_Mysql_db()
-        cursor = db.cursor(dictionary=True)
+    async def appointments_page(request: Request):
+        """Route to display appointments schedule and management page"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
 
         try:
-            cursor.execute(
-                """SELECT a.*, p.first_name as patient_first_name, p.last_name as patient_last_name 
-                FROM Appointments a
-                JOIN Patients p ON a.patient_id = p.patient_id
-                WHERE a.therapist_id = %s AND a.appointment_date >= CURDATE()
-                ORDER BY a.appointment_date, a.appointment_time""", 
-                (user["user_id"],)
-            )
-            upcoming_appointments = cursor.fetchall()
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
 
-            cursor.execute(
-                """SELECT a.*, p.first_name as patient_first_name, p.last_name as patient_last_name 
-                FROM Appointments a
-                JOIN Patients p ON a.patient_id = p.patient_id
-                WHERE a.therapist_id = %s AND a.appointment_date < CURDATE()
-                ORDER BY a.appointment_date DESC, a.appointment_time DESC
-                LIMIT 10""", 
-                (user["user_id"],)
-            )
-            past_appointments = cursor.fetchall()
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor(dictionary=True)
+                
+                # Get therapist information
+                cursor.execute(
+                    "SELECT first_name, last_name FROM Therapists WHERE id = %s", 
+                    (session_data["user_id"],)
+                )
+                therapist = cursor.fetchone()
+                
+                if not therapist:
+                    return RedirectResponse(url="/Therapist_Login")
+                
+                # Get upcoming appointments (future dates)
+                cursor.execute(
+                    """SELECT a.*, p.first_name as patient_first_name, p.last_name as patient_last_name 
+                    FROM Appointments a
+                    JOIN Patients p ON a.patient_id = p.patient_id
+                    WHERE a.therapist_id = %s AND a.appointment_date >= CURDATE()
+                    ORDER BY a.appointment_date, a.appointment_time""", 
+                    (session_data["user_id"],)
+                )
+                upcoming_appointments = cursor.fetchall()
 
-            therapist_data = await get_therapist_data(user["user_id"])
+                # Get past appointments
+                cursor.execute(
+                    """SELECT a.*, p.first_name as patient_first_name, p.last_name as patient_last_name 
+                    FROM Appointments a
+                    JOIN Patients p ON a.patient_id = p.patient_id
+                    WHERE a.therapist_id = %s AND a.appointment_date < CURDATE()
+                    ORDER BY a.appointment_date DESC, a.appointment_time DESC
+                    LIMIT 10""", 
+                    (session_data["user_id"],)
+                )
+                past_appointments = cursor.fetchall()
+                
+                # Get patients list for quick add modal
+                cursor.execute(
+                    "SELECT patient_id, first_name, last_name, diagnosis FROM Patients WHERE therapist_id = %s", 
+                    (session_data["user_id"],)
+                )
+                patients = cursor.fetchall()
+                
+                # Get unread messages count
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
+                    (session_data["user_id"],)
+                )
+                unread_count_result = cursor.fetchone()
+                unread_messages_count = unread_count_result['count'] if unread_count_result else 0
+                
+                # Get recent messages for dropdown
+                cursor.execute(
+                    """SELECT m.message_id, m.subject, m.content, m.created_at, 
+                            t.first_name, t.last_name, COALESCE(t.profile_image, 'avatar-1.jpg') as profile_image
+                        FROM Messages m
+                        JOIN Therapists t ON m.sender_id = t.id
+                        WHERE m.recipient_id = %s AND m.is_read = FALSE
+                        ORDER BY m.created_at DESC
+                        LIMIT 4""",
+                    (session_data["user_id"],)
+                )
+                messages_result = cursor.fetchall()
 
-            return templates.TemplateResponse(
-                "dist/appointments/appointment_list.html", 
-                {
-                    "request": request,
-                    "upcoming_appointments": upcoming_appointments,
-                    "past_appointments": past_appointments,
-                    "first_name": therapist_data["first_name"],
-                    "last_name": therapist_data["last_name"]
-                }
-            )
-        finally:
-            cursor.close()
-            db.close()
+                # Format messages with time display
+                recent_messages = []
+                for message in messages_result:
+                    message_with_time = message.copy()
+                    
+                    # Format timestamp
+                    timestamp = message['created_at']
+                    now = datetime.datetime.now()
+                    if isinstance(timestamp, datetime.datetime):
+                        diff = now - timestamp
+                        if timestamp.date() == now.date():
+                            message_with_time['time_display'] = timestamp.strftime('%I:%M %p')
+                            
+                            minutes_ago = diff.seconds // 60
+                            if minutes_ago < 60:
+                                message_with_time['time_ago'] = f"{minutes_ago} min ago"
+                            else:
+                                hours_ago = minutes_ago // 60
+                                message_with_time['time_ago'] = f"{hours_ago} hours ago"
+                                
+                        elif timestamp.date() == (now - timedelta(days=1)).date():
+                            message_with_time['time_display'] = "Yesterday"
+                            message_with_time['time_ago'] = timestamp.strftime('%I:%M %p')
+                        else:
+                            message_with_time['time_display'] = timestamp.strftime('%d %b')
+                            message_with_time['time_ago'] = timestamp.strftime('%Y')
+                            
+                    recent_messages.append(message_with_time)
+                
+                # Get today's date in format YYYY-MM-DD for filtering today's appointments
+                today = datetime.datetime.now().strftime('%Y-%m-%d')
+
+                # Ensure appointment_time is properly formatted
+                for appt in upcoming_appointments + past_appointments:
+                    if isinstance(appt.get('appointment_time'), timedelta):
+                        # Convert timedelta to a string representation
+                        total_seconds = int(appt['appointment_time'].total_seconds())
+                        hours = total_seconds // 3600
+                        minutes = (total_seconds % 3600) // 60
+                        seconds = total_seconds % 60
+                        
+                        # Create a time string for display
+                        appt['time_display'] = f"{hours:02d}:{minutes:02d}"
+                    else:
+                        appt['time_display'] = appt['appointment_time'].strftime('%H:%M') if hasattr(appt['appointment_time'], 'strftime') else str(appt['appointment_time'])
+                
+                return templates.TemplateResponse(
+                    "dist/appointments/appointment_list.html",
+                    {
+                        "request": request,
+                        "first_name": therapist["first_name"],
+                        "last_name": therapist["last_name"],
+                        "upcoming_appointments": upcoming_appointments,
+                        "past_appointments": past_appointments,
+                        "patients": patients,
+                        "unread_messages_count": unread_messages_count,
+                        "recent_messages": recent_messages,
+                        "today": today
+                    }
+                )
+            except Exception as e:
+                print(f"Database error in appointments page: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(url="/front-page")
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+        except Exception as e:
+            print(f"Error in appointments page: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/Therapist_Login")
+
 
     @app.get("/appointments/new")
-    async def new_appointment_page(request: Request, user=Depends(get_current_user)):
-        db = get_Mysql_db()
-        cursor = db.cursor(dictionary=True)
+    async def new_appointment_form(request: Request):
+        """Display the new appointment form"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
 
         try:
-            cursor.execute(
-                "SELECT patient_id, first_name, last_name FROM Patients WHERE therapist_id = %s", 
-                (user["user_id"],)
-            )
-            patients = cursor.fetchall()
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
 
-            therapist_data = await get_therapist_data(user["user_id"])
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor(dictionary=True)
+                
+                # Get therapist information
+                cursor.execute(
+                    "SELECT first_name, last_name FROM Therapists WHERE id = %s", 
+                    (session_data["user_id"],)
+                )
+                therapist = cursor.fetchone()
+                
+                if not therapist:
+                    return RedirectResponse(url="/Therapist_Login")
+                
+                # Get patients for the dropdown
+                cursor.execute(
+                    """SELECT patient_id, first_name, last_name, diagnosis, phone
+                    FROM Patients 
+                    WHERE therapist_id = %s
+                    ORDER BY last_name, first_name""", 
+                    (session_data["user_id"],)
+                )
+                patients = cursor.fetchall()
+                
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM Messages WHERE recipient_id = %s AND recipient_type = 'therapist' AND is_read = FALSE",
+                    (session_data["user_id"],)
+                )
+                unread_count_result = cursor.fetchone()
+                unread_messages_count = unread_count_result['count'] if unread_count_result else 0
+                
+                cursor.execute(
+                    """SELECT m.message_id, m.subject, m.content, m.created_at, 
+                            t.first_name, t.last_name, COALESCE(t.profile_image, 'avatar-1.jpg') as profile_image
+                        FROM Messages m
+                        JOIN Therapists t ON m.sender_id = t.id
+                        WHERE m.recipient_id = %s AND m.is_read = FALSE
+                        ORDER BY m.created_at DESC
+                        LIMIT 4""",
+                    (session_data["user_id"],)
+                )
+                messages_result = cursor.fetchall()
 
-            return templates.TemplateResponse(
-                "dist/appointments/new_appointment.html", 
-                {
-                    "request": request,
-                    "patients": patients,
-                    "first_name": therapist_data["first_name"],
-                    "last_name": therapist_data["last_name"]
-                }
-            )
-        finally:
-            cursor.close()
-            db.close()
+                recent_messages = []
+                for message in messages_result:
+                    message_with_time = message.copy()
+                    
+                    timestamp = message['created_at']
+                    now = datetime.datetime.now()
+                    if isinstance(timestamp, datetime.datetime):
+                        diff = now - timestamp
+                        if timestamp.date() == now.date():
+                            message_with_time['time_display'] = timestamp.strftime('%I:%M %p')
+                            
+                            minutes_ago = diff.seconds // 60
+                            if minutes_ago < 60:
+                                message_with_time['time_ago'] = f"{minutes_ago} min ago"
+                            else:
+                                hours_ago = minutes_ago // 60
+                                message_with_time['time_ago'] = f"{hours_ago} hours ago"
+                                
+                        elif timestamp.date() == (now - timedelta(days=1)).date():
+                            message_with_time['time_display'] = "Yesterday"
+                            message_with_time['time_ago'] = timestamp.strftime('%I:%M %p')
+                        else:
+                            message_with_time['time_display'] = timestamp.strftime('%d %b')
+                            message_with_time['time_ago'] = timestamp.strftime('%Y')
+                            
+                    recent_messages.append(message_with_time)
+                
+                today = datetime.datetime.now().strftime('%Y-%m-%d')
+                
+                return templates.TemplateResponse(
+                    "dist/appointments/new_appointment.html",
+                    {
+                        "request": request,
+                        "first_name": therapist["first_name"],
+                        "last_name": therapist["last_name"],
+                        "patients": patients,
+                        "unread_messages_count": unread_messages_count,
+                        "recent_messages": recent_messages,
+                        "today": today
+                    }
+                )
+            except Exception as e:
+                print(f"Database error in new appointment form: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(url="/appointments")
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+        except Exception as e:
+            print(f"Error in new appointment form: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/Therapist_Login")
+
 
     @app.post("/appointments/new")
-    async def create_appointment(
-        request: Request,
-        patient_id: int = Form(...),
-        appointment_date: str = Form(...),
-        appointment_time: str = Form(...),
-        duration: int = Form(60),
-        notes: str = Form(None),
-        user=Depends(get_current_user)
-    ):
-        db = get_Mysql_db()
-        cursor = db.cursor()
+    async def create_appointment(request: Request):
+        """Handle appointment creation"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return RedirectResponse(url="/Therapist_Login")
 
         try:
-            cursor.execute(
-                """INSERT INTO Appointments 
-                (patient_id, therapist_id, appointment_date, appointment_time, duration, notes) 
-                VALUES (%s, %s, %s, %s, %s, %s)""",
-                (patient_id, user["user_id"], appointment_date, appointment_time, duration, notes)
-            )
-            db.commit()
-            return RedirectResponse(url="/appointments", status_code=303)
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return RedirectResponse(url="/Therapist_Login")
+
+            form_data = await request.form()
+            
+            patient_id = form_data.get("patient_id")
+            appointment_date = form_data.get("appointment_date")
+            appointment_time = form_data.get("appointment_time")
+            duration = form_data.get("duration", "60")
+            notes = form_data.get("notes")
+            
+            if not patient_id or not appointment_date or not appointment_time:
+                return RedirectResponse(url="/appointments/new?error=missing_fields", status_code=303)
+
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor()
+                
+                cursor.execute(
+                    "SELECT patient_id FROM Patients WHERE patient_id = %s AND therapist_id = %s",
+                    (patient_id, session_data["user_id"])
+                )
+                
+                if not cursor.fetchone():
+                    print(f"Patient {patient_id} does not belong to therapist {session_data['user_id']}")
+                    return RedirectResponse(url="/appointments/new?error=invalid_patient")
+                
+                try:
+                    try:
+                        time_obj = datetime.datetime.strptime(appointment_time, "%H:%M").time()
+                    except ValueError:
+                        try:
+                            time_obj = datetime.datetime.strptime(appointment_time, "%I:%M %p").time()
+                        except ValueError:
+                            time_obj = datetime.datetime.strptime(appointment_time, "%I:%M%p").time()
+                    
+                    cursor.execute(
+                        """INSERT INTO Appointments 
+                        (patient_id, therapist_id, appointment_date, appointment_time, duration, notes, status) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                        (patient_id, session_data["user_id"], appointment_date, time_obj, duration, notes, "Scheduled")
+                    )
+                    db.commit()
+                    
+                    return RedirectResponse(url="/appointments", status_code=303)
+                except ValueError as ve:
+                    print(f"Time parsing error: {ve}")
+                    return RedirectResponse(url="/appointments/new?error=invalid_time_format")
+                    
+            except Exception as e:
+                if db:
+                    db.rollback()
+                print(f"Database error creating appointment: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return RedirectResponse(url="/appointments/new?error=db_error")
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
         except Exception as e:
             print(f"Error creating appointment: {e}")
-            return RedirectResponse(url="/appointments/new", status_code=303)
-        finally:
-            cursor.close()
-            db.close()
+            print(f"Traceback: {traceback.format_exc()}")
+            return RedirectResponse(url="/Therapist_Login")
+
+
+    @app.post("/appointments/{appointment_id}/status")
+    async def update_appointment_status(
+        request: Request,
+        appointment_id: int,
+        status: str = Form(...),
+        session_notes: str = Form(None)
+    ):
+        """Route to update appointment status"""
+        session_id = request.cookies.get("session_id")
+        if not session_id:
+            return JSONResponse(status_code=401, content={"success": False, "message": "Not authenticated"})
+
+        try:
+            session_data = await get_redis_session(session_id)
+            if not session_data:
+                return JSONResponse(status_code=401, content={"success": False, "message": "Not authenticated"})
+
+            db = get_Mysql_db()
+            cursor = None
+            
+            try:
+                cursor = db.cursor()
+                
+                cursor.execute(
+                    """SELECT appointment_id FROM Appointments 
+                    WHERE appointment_id = %s AND therapist_id = %s""",
+                    (appointment_id, session_data["user_id"])
+                )
+                
+                if not cursor.fetchone():
+                    return JSONResponse(
+                        status_code=403, 
+                        content={"success": False, "message": "You don't have permission to update this appointment"}
+                    )
+                
+                notes_update = ""
+                if session_notes:
+                    notes_update = f", notes = CONCAT(COALESCE(notes, ''), '\n\n{session_notes}')"
+                
+                cursor.execute(
+                    f"UPDATE Appointments SET status = %s{notes_update} WHERE appointment_id = %s",
+                    (status, appointment_id)
+                )
+                
+                db.commit()
+                
+                return JSONResponse(content={"success": True, "message": f"Appointment marked as {status}"})
+                
+            except Exception as e:
+                if db:
+                    db.rollback()
+                print(f"Database error in update appointment status: {e}")
+                print(f"Traceback: {traceback.format_exc()}")
+                return JSONResponse(
+                    status_code=500, 
+                    content={"success": False, "message": f"Error updating appointment: {str(e)}"}
+                )
+            finally:
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+        except Exception as e:
+            print(f"Error in update appointment status: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            return JSONResponse(
+                status_code=500, 
+                content={"success": False, "message": "Server error"}
+            )
+
 
     @app.get("/exercises")
     async def exercises_page(request: Request, user=Depends(get_current_user)):
@@ -3516,13 +3832,17 @@ def Routes():
 
             cursor.execute("SELECT * FROM ExerciseCategories")
             categories = cursor.fetchall()
-
+            
+            cursor.execute("SELECT * FROM TreatmentPlans")
+            treatment_plans = cursor.fetchall()
+            
             therapist_data = await get_therapist_data(user["user_id"])
 
             return templates.TemplateResponse(
                 "dist/exercises/exercise_list.html", 
                 {
                     "request": request,
+                    "treatment_plans": treatment_plans,
                     "exercises": exercises,
                     "categories": categories,
                     "first_name": therapist_data["first_name"],
@@ -3637,7 +3957,7 @@ def Routes():
             
 
             patient_id = form.get("patient_id")
-            plan_name = form.get("plan_name")  # Note: HTML form uses plan_name, not name
+            plan_name = form.get("plan_name")
             description = form.get("description", "")
             start_date = form.get("start_date")
             end_date = form.get("end_date")

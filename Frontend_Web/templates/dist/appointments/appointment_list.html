@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Appointments | APR-CV</title>
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="description" content="APR-CV Physical Therapy Management System">
+  <meta name="keywords" content="PT, Physical Therapy, Rehab, Patient Management">
+  <meta name="author" content="APR-CV Team">
+
+  <link rel="icon" href="../static/assets/images/favicon.svg" type="image/x-icon"> 
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" id="main-font-link">
+  <link rel="stylesheet" href="../static/assets/fonts/tabler-icons.min.css">
+  <link rel="stylesheet" href="../static/assets/fonts/feather.css">
+  <link rel="stylesheet" href="../static/assets/fonts/fontawesome.css">
+  <link rel="stylesheet" href="../static/assets/fonts/material.css">
+  <link rel="stylesheet" href="../static/assets/css/style.css" id="main-style-link">
+  <link rel="stylesheet" href="../static/assets/css/style-preset.css">
+  <!-- Calendar specific styles -->
+  <link rel="stylesheet" href="../static/assets/css/plugins/fullcalendar.min.css">
+</head>
+
+<body data-pc-preset="preset-1" data-pc-direction="ltr" data-pc-theme="light">
+  
+  <div class="loader-bg">
+    <div class="loader-track">
+      <div class="loader-fill"></div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <nav class="pc-sidebar">
+    <div class="navbar-wrapper">
+      <div class="m-header">
+        <a href="/front-page" class="b-brand text-primary">
+          <i class="ti ti-medical-cross fs-4"></i>
+          <span class="ms-2 fw-bold">APR-CV</span>
+        </a>
+      </div>
+      <div class="navbar-content">
+        <ul class="pc-navbar">
+          <li class="pc-item">
+            <a href="/front-page" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-dashboard"></i></span>
+              <span class="pc-mtext">Dashboard</span>
+            </a>
+          </li>
+        
+          <li class="pc-item pc-hasmenu">
+            <a href="#!" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-users"></i></span>
+              <span class="pc-mtext">Patients</span>
+              <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+            </a>
+            <ul class="pc-submenu">
+              <li class="pc-item"><a class="pc-link" href="/patients">Patient Directory</a></li>
+              <li class="pc-item"><a class="pc-link" href="/patients/add">Add New Patient</a></li>
+              <li class="pc-item"><a class="pc-link" href="/reports/patients">Patient Reports</a></li>
+            </ul>
+          </li>
+        
+          <li class="pc-item pc-hasmenu active pc-trigger">
+            <a href="#!" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-calendar"></i></span>
+              <span class="pc-mtext">Appointments</span>
+              <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+            </a>
+            <ul class="pc-submenu" style="display: block;">
+              <li class="pc-item active"><a class="pc-link" href="/appointments">Schedule</a></li>
+              <li class="pc-item"><a class="pc-link" href="/appointments/new">New Appointment</a></li>
+            </ul>
+          </li>
+        
+          <li class="pc-item pc-hasmenu">
+            <a href="#!" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-activity"></i></span>
+              <span class="pc-mtext">Exercise Library</span>
+              <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+            </a>
+            <ul class="pc-submenu">
+              <li class="pc-item"><a class="pc-link" href="/exercises">Browse Exercises</a></li>
+              <li class="pc-item"><a class="pc-link" href="/exercises/add">Upload New Exercise</a></li>
+            </ul>
+          </li>
+        
+          <li class="pc-item pc-hasmenu">
+            <a href="#!" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-report"></i></span>
+              <span class="pc-mtext">Treatment Plans</span>
+              <span class="pc-arrow"><i data-feather="chevron-right"></i></span>
+            </a>
+            <ul class="pc-submenu">
+              <li class="pc-item"><a class="pc-link" href="/treatment-plans/new">Create Plan</a></li>
+              <li class="pc-item"><a class="pc-link" href="/treatment-plans">Manage Plans</a></li>
+            </ul>
+          </li>
+        
+          <li class="pc-item">
+            <a href="/analytics" class="pc-link">
+              <span class="pc-micon"><i class="ti ti-chart-bar"></i></span>
+              <span class="pc-mtext">Analytics</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- Header -->
+  <header class="pc-header">
+    <div class="header-wrapper"> 
+      <div class="me-auto pc-mob-drp">
+        <ul class="list-unstyled">
+          <li class="pc-h-item pc-sidebar-collapse">
+            <a href="#" class="pc-head-link ms-0" id="sidebar-hide">
+              <i class="ti ti-menu-2"></i>
+            </a>
+          </li>
+          <li class="pc-h-item pc-sidebar-popup">
+            <a href="#" class="pc-head-link ms-0" id="mobile-collapse">
+              <i class="ti ti-menu-2"></i>
+            </a>
+          </li>
+          <li class="dropdown pc-h-item d-inline-flex d-md-none">
+            <a class="pc-head-link dropdown-toggle arrow-none m-0"
+              data-bs-toggle="dropdown"
+              href="#"
+              role="button"
+              aria-haspopup="false"
+              aria-expanded="false">
+              <i class="ti ti-search"></i>
+            </a>
+            <div class="dropdown-menu pc-h-dropdown drp-search">
+              <form class="px-3">
+                <div class="form-group mb-0 d-flex align-items-center">
+                  <i data-feather="search"></i>
+                  <input type="search" class="form-control border-0 shadow-none" placeholder="Search here. . .">
+                </div>
+              </form>
+            </div>
+          </li>
+          <li class="pc-h-item d-none d-md-inline-flex">
+            <form class="header-search">
+              <i data-feather="search" class="icon-search"></i>
+              <input type="search" class="form-control" placeholder="Search here. . .">
+            </form>
+          </li>
+        </ul>
+      </div>
+
+      <div class="ms-auto">
+        <ul class="list-unstyled">
+          <li class="dropdown pc-h-item">
+            <a class="pc-head-link dropdown-toggle arrow-none me-0"
+               data-bs-toggle="dropdown"
+               href="#"
+               role="button"
+               aria-haspopup="false"
+               aria-expanded="false">
+              <i class="ti ti-mail"></i>
+              {% if unread_messages_count > 0 %}
+              <span class="badge bg-danger pc-h-badge dots"><span class="sr-only">{{ unread_messages_count }} unread messages</span></span>
+              {% endif %}
+            </a>
+            <div class="dropdown-menu dropdown-notification dropdown-menu-end pc-h-dropdown">
+              <div class="dropdown-header d-flex align-items-center justify-content-between">
+                <h5 class="m-0">Messages{% if unread_messages_count > 0 %} <span class="badge bg-light-danger text-danger">{{ unread_messages_count }} New</span>{% endif %}</h5>
+                <a href="#!" class="pc-head-link bg-transparent"><i class="ti ti-x text-danger"></i></a>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-header px-0 text-wrap header-notification-scroll position-relative" style="max-height: calc(100vh - 215px)">
+                <div class="list-group list-group-flush w-100">
+                  {% if recent_messages %}
+                    {% for message in recent_messages %}
+                    <a href="/messages/{{ message.message_id }}" class="list-group-item list-group-item-action">
+                      <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <img src="/static/assets/images/user/therapist_11_1744631888.gif" alt="user-image" class="user-avtar">
+                        </div>
+                        <div class="flex-grow-1 ms-1">
+                          <span class="float-end text-muted">{{ message.time_display }}</span>
+                          <p class="text-body mb-1">{{ message.content|truncate(60) }}</p>
+                          <span class="text-muted">{{ message.time_ago }}</span>
+                        </div>
+                      </div>
+                    </a>
+                    {% endfor %}
+                  {% else %}
+                    <div class="text-center p-3">
+                      <p class="text-muted">No new messages</p>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="text-center py-2">
+                <a href="/messages" class="link-primary">View all messages</a>
+              </div>
+            </div>
+          </li>
+          <li class="dropdown pc-h-item header-user-profile">
+            <a class="pc-head-link dropdown-toggle arrow-none me-0"
+              data-bs-toggle="dropdown"
+              href="#"
+              role="button"
+              aria-haspopup="false"
+              data-bs-auto-close="outside"
+              aria-expanded="false">
+              <img src="/static/assets/images/user/therapist_11_1744631888.gif" alt="user-image" class="user-avtar">
+              <span>{{ first_name }} {{ last_name }}</span>
+            </a>
+            <div class="dropdown-menu dropdown-user-profile dropdown-menu-end pc-h-dropdown">
+              <div class="dropdown-header">
+                <div class="d-flex mb-1">
+                  <div class="flex-shrink-0">
+                    <img src="/static/assets/images/user/therapist_11_1744631888.gif" alt="user-image" class="user-avtar">
+                </div>
+                  <div class="flex-grow-1 ms-3">
+                    <h6 class="mb-1">{{ first_name }} {{ last_name }}</h6>
+                    <span>Physical Therapist</span>
+                  </div>
+                  <a href="/logout" class="pc-head-link bg-transparent"><i class="ti ti-power text-danger"></i></a>
+                </div>
+              </div>
+              <ul class="nav drp-tabs nav-fill nav-tabs" id="mydrpTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link active"
+                    id="drp-t1"
+                    data-bs-toggle="tab"
+                    data-bs-target="#drp-tab-1"
+                    type="button"
+                    role="tab"
+                    aria-controls="drp-tab-1"
+                    aria-selected="true"
+                    ><i class="ti ti-user"></i> Profile</button
+                  >
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    id="drp-t2"
+                    data-bs-toggle="tab"
+                    data-bs-target="#drp-tab-2"
+                    type="button"
+                    role="tab"
+                    aria-controls="drp-tab-2"
+                    aria-selected="false"
+                    ><i class="ti ti-settings"></i> Setting</button
+                  >
+                </li>
+              </ul>
+              <div class="tab-content" id="mysrpTabContent">
+                <div class="tab-pane fade show active" id="drp-tab-1" role="tabpanel" aria-labelledby="drp-t1" tabindex="0">
+                  <a href="/profile/edit" class="dropdown-item">
+                    <i class="ti ti-edit-circle"></i>
+                    <span>Edit Profile</span>
+                  </a>
+                  <a href="/profile" class="dropdown-item">
+                    <i class="ti ti-user"></i>
+                    <span>View Profile</span>
+                  </a>
+                  <a href="/logout" class="dropdown-item">
+                    <i class="ti ti-power"></i>
+                    <span>Logout</span>
+                  </a>
+                </div>
+                <div class="tab-pane fade" id="drp-tab-2" role="tabpanel" aria-labelledby="drp-t2" tabindex="0">
+                  <a href="/support" class="dropdown-item">
+                    <i class="ti ti-help"></i>
+                    <span>Support</span>
+                  </a>
+                  <a href="/settings" class="dropdown-item">
+                    <i class="ti ti-user"></i>
+                    <span>Account Settings</span>
+                  </a>
+                  <a href="/privacy" class="dropdown-item">
+                    <i class="ti ti-lock"></i>
+                    <span>Privacy Center</span>
+                  </a>
+                  <a href="/feedback" class="dropdown-item">
+                    <i class="ti ti-messages"></i>
+                    <span>Feedback</span>
+                  </a>
+                  <a href="/activity" class="dropdown-item">
+                    <i class="ti ti-list"></i>
+                    <span>History</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="pc-container">
+    <div class="pc-content">
+      
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-block">
+          <div class="row align-items-center">
+            <div class="col-md-12">
+              <div class="page-header-title">
+                <h5 class="m-b-10">Appointments</h5>
+              </div>
+              <ul class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/front-page">Home</a></li>
+                <li class="breadcrumb-item" aria-current="page">Appointments</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Appointment Management -->
+      <div class="row">
+        <!-- Calendar Section -->
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header">
+              <h5>Appointment Calendar</h5>
+              <div class="card-header-right">
+                <a href="/appointments/new" class="btn btn-primary">
+                  <i class="ti ti-plus"></i> New Appointment
+                </a>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="appointment-calendar"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Upcoming Appointments List -->
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-header">
+              <h5>Today's Appointments</h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="list-group list-group-flush" id="today-appointments">
+                {% if upcoming_appointments|length > 0 %}
+                  {% for appointment in upcoming_appointments %}
+                    {% if appointment.appointment_date.strftime('%Y-%m-%d') == today %}
+                      <div class="list-group-item border-0 border-bottom">
+                        <div class="d-flex align-items-start">
+                          <div class="flex-shrink-0">
+                            <div class="avtar avtar-s 
+                              {% if appointment.status == 'Scheduled' %}
+                                bg-light-primary text-primary
+                              {% elif appointment.status == 'Completed' %}
+                                bg-light-success text-success
+                              {% else %}
+                                bg-light-danger text-danger
+                              {% endif %}">
+                              <i class="ti ti-{% if appointment.status == 'Scheduled' %}clock{% elif appointment.status == 'Completed' %}check{% else %}x{% endif %}"></i>
+                            </div>
+                          </div>
+                          <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1">{{ appointment.patient_first_name }} {{ appointment.patient_last_name }}</h6>
+                            <p class="mb-0 text-muted small">
+                                {{ appointment.formatted_time }} - {{ appointment.duration }} min
+                              </p>
+                          </div>
+                          <div class="dropdown">
+                            <a class="text-secondary" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="ti ti-dots-vertical f-18"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li><a class="dropdown-item" href="/appointments/{{ appointment.appointment_id }}"><i class="ti ti-eye me-2"></i>View Details</a></li>
+                              <li><a class="dropdown-item" href="/appointments/{{ appointment.appointment_id }}/edit"><i class="ti ti-edit me-2"></i>Edit</a></li>
+                              <li><a class="dropdown-item text-success" href="#" onclick="markAsCompleted({{ appointment.appointment_id }})"><i class="ti ti-check me-2"></i>Mark Completed</a></li>
+                              <li><a class="dropdown-item text-danger" href="#" onclick="markAsCancelled({{ appointment.appointment_id }})"><i class="ti ti-x me-2"></i>Cancel</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <div class="list-group-item border-0 text-center py-5">
+                    <i class="ti ti-calendar-off text-muted mb-2" style="font-size: 2rem;"></i>
+                    <p class="mb-0 text-muted">No appointments scheduled for today</p>
+                    <a href="/appointments/new" class="btn btn-outline-primary btn-sm mt-3">Schedule New</a>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Upcoming and Past Appointments -->
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5>Appointment List</h5>
+              <ul class="nav nav-tabs card-header-tabs" id="appointment-tabs" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" id="upcoming-tab" data-bs-toggle="tab" href="#upcoming" role="tab" aria-controls="upcoming" aria-selected="true">Upcoming</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" id="past-tab" data-bs-toggle="tab" href="#past" role="tab" aria-controls="past" aria-selected="false">Past</a>
+                </li>
+              </ul>
+            </div>
+            <div class="card-body">
+              <div class="tab-content" id="appointment-tab-content">
+                <!-- Upcoming Appointments Tab -->
+                <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Patient</th>
+                          <th>Date</th>
+                          <th>Time</th>
+                          <th>Duration</th>
+                          <th>Status</th>
+                          <th class="text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% if upcoming_appointments|length > 0 %}
+                          {% for appointment in upcoming_appointments %}
+                            <tr>
+                              <td>
+                                <div class="d-flex align-items-center">
+                                  <div class="avatar avatar-cyan">
+                                    <div class="avatar-content">{{ appointment.patient_first_name[0] }}{{ appointment.patient_last_name[0] }}</div>
+                                  </div>
+                                  <div class="ms-2">
+                                    <h6 class="mb-0">{{ appointment.patient_first_name }} {{ appointment.patient_last_name }}</h6>
+                                    <small class="text-muted">PT-{{ appointment.patient_id }}</small>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>{{ appointment.appointment_date.strftime('%b %d, %Y') }}</td>
+                              <td>{{ appointment.formatted_time }}</td>
+                              <td>{{ appointment.duration }} min</td>
+                              <td>
+                                <span class="badge 
+                                  {% if appointment.status == 'Scheduled' %}
+                                    bg-light-primary text-primary
+                                  {% elif appointment.status == 'Completed' %}
+                                    bg-light-success text-success
+                                  {% else %}
+                                    bg-light-danger text-danger
+                                  {% endif %}">
+                                  {{ appointment.status }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <div class="dropdown">
+                                  <a class="text-secondary dropdown-toggle" href="#" id="action-{{ appointment.appointment_id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="ti ti-dots-vertical"></i>
+                                  </a>
+                                  <ul class="dropdown-menu" aria-labelledby="action-{{ appointment.appointment_id }}">
+                                    <li><a class="dropdown-item" href="/appointments/{{ appointment.appointment_id }}"><i class="ti ti-eye me-2"></i>View Details</a></li>
+                                    <li><a class="dropdown-item" href="/appointments/{{ appointment.appointment_id }}/edit"><i class="ti ti-edit me-2"></i>Edit</a></li>
+                                    <li><a class="dropdown-item text-success" href="#" onclick="markAsCompleted({{ appointment.appointment_id }})"><i class="ti ti-check me-2"></i>Mark Completed</a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="markAsCancelled({{ appointment.appointment_id }})"><i class="ti ti-x me-2"></i>Cancel</a></li>
+                                  </ul>
+                                </div>
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        {% else %}
+                          <tr>
+                            <td colspan="6" class="text-center py-5">
+                              <i class="ti ti-calendar-off text-muted mb-2" style="font-size: 2rem;"></i>
+                              <p class="mb-0 text-muted">No upcoming appointments</p>
+                              <a href="/appointments/new" class="btn btn-outline-primary btn-sm mt-3">Schedule New</a>
+                            </td>
+                          </tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <!-- Past Appointments Tab -->
+                <div class="tab-pane fade" id="past" role="tabpanel" aria-labelledby="past-tab">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Patient</th>
+                          <th>Date</th>
+                          <th>Time</th>
+                          <th>Duration</th>
+                          <th>Status</th>
+                          <th class="text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% if past_appointments|length > 0 %}
+                          {% for appointment in past_appointments %}
+                            <tr>
+                              <td>
+                                <div class="d-flex align-items-center">
+                                  <div class="avatar avatar-cyan">
+                                    <div class="avatar-content">{{ appointment.patient_first_name[0] }}{{ appointment.patient_last_name[0] }}</div>
+                                  </div>
+                                  <div class="ms-2">
+                                    <h6 class="mb-0">{{ appointment.patient_first_name }} {{ appointment.patient_last_name }}</h6>
+                                    <small class="text-muted">PT-{{ appointment.patient_id }}</small>
+                                  </div>
+                                </div>
+                              </td>
+                              <td>{{ appointment.appointment_date.strftime('%b %d, %Y') }}</td>
+                              <td>{{ appointment.time_12h }}</td>
+                              <td>{{ appointment.duration }} min</td>
+                              <td>
+                                <span class="badge 
+                                  {% if appointment.status == 'Scheduled' %}
+                                    bg-light-primary text-primary
+                                  {% elif appointment.status == 'Completed' %}
+                                    bg-light-success text-success
+                                  {% elif appointment.status == 'No-Show' %}
+                                    bg-light-warning text-warning
+                                  {% else %}
+                                    bg-light-danger text-danger
+                                  {% endif %}">
+                                  {{ appointment.status }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <div class="dropdown">
+                                  <a class="text-secondary dropdown-toggle" href="#" id="action-{{ appointment.appointment_id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="ti ti-dots-vertical"></i>
+                                  </a>
+                                  <ul class="dropdown-menu" aria-labelledby="action-{{ appointment.appointment_id }}">
+                                    <li><a class="dropdown-item" href="/appointments/{{ appointment.appointment_id }}"><i class="ti ti-eye me-2"></i>View Details</a></li>
+                                    <li><a class="dropdown-item" href="/patients/{{ appointment.patient_id }}"><i class="ti ti-user me-2"></i>Patient Profile</a></li>
+                                    <li><a class="dropdown-item" href="/patients/{{ appointment.patient_id }}/notes/add?appointment={{ appointment.appointment_id }}"><i class="ti ti-notes me-2"></i>Add Session Notes</a></li>
+                                  </ul>
+                                </div>
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        {% else %}
+                          <tr>
+                            <td colspan="6" class="text-center py-5">
+                              <i class="ti ti-history text-muted mb-2" style="font-size: 2rem;"></i>
+                              <p class="mb-0 text-muted">No past appointments found</p>
+                            </td>
+                          </tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Footer -->
+  <footer class="pc-footer">
+    <div class="footer-wrapper container-fluid">
+      <div class="row">
+        <div class="col-auto my-1">
+          <ul class="list-inline footer-link mb-0"></ul>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Status Change Modal -->
+  <div class="modal fade" id="statusChangeModal" tabindex="-1" aria-labelledby="statusChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="statusChangeModalLabel">Update Appointment Status</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="statusChangeMessage">Are you sure you want to update this appointment's status?</p>
+          <form id="statusChangeForm">
+            <input type="hidden" id="appointmentId" name="appointmentId" value="">
+            <input type="hidden" id="newStatus" name="newStatus" value="">
+            
+            <div class="mb-3" id="noShowReasonContainer" style="display: none;">
+              <label for="noShowReason" class="form-label">Reason for No-Show</label>
+              <select class="form-select" id="noShowReason" name="noShowReason">
+                <option value="No notification">No notification</option>
+                <option value="Patient forgot">Patient forgot</option>
+                <option value="Emergency">Emergency</option>
+                <option value="Transportation issue">Transportation issue</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            
+            <div class="mb-3" id="otherReasonContainer" style="display: none;">
+              <label for="otherReason" class="form-label">Specify Reason</label>
+              <textarea class="form-control" id="otherReason" name="otherReason" rows="2"></textarea>
+            </div>
+            
+            <div class="mb-3" id="sessionNotesContainer" style="display: none;">
+              <label for="sessionNotes" class="form-label">Session Notes</label>
+              <textarea class="form-control" id="sessionNotes" name="sessionNotes" rows="3" placeholder="Enter notes about this session..."></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmStatusChange">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Appointment Quick Modal -->
+  <div class="modal fade" id="quickAddModal" tabindex="-1" aria-labelledby="quickAddModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="quickAddModalLabel">Quick Add Appointment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="quickAddForm" action="/appointments/new" method="post">
+            <div class="mb-3">
+              <label for="patient_id" class="form-label">Patient</label>
+              <select class="form-select" id="patient_id" name="patient_id" required>
+                <option value="">Select Patient</option>
+                {% for patient in patients %}
+                <option value="{{ patient.patient_id }}">{{ patient.first_name }} {{ patient.last_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="appointment_date" class="form-label">Date</label>
+              <input type="date" class="form-control" id="appointment_date" name="appointment_date" required>
+            </div>
+            <div class="mb-3">
+              <label for="appointment_time" class="form-label">Time</label>
+              <input type="time" class="form-control" id="appointment_time" name="appointment_time" required>
+            </div>
+            <div class="mb-3">
+              <label for="duration" class="form-label">Duration (minutes)</label>
+              <select class="form-select" id="duration" name="duration">
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60" selected>60 minutes</option>
+                <option value="90">90 minutes</option>
+                <option value="120">120 minutes</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveQuickAdd">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Required Scripts -->
+  <script src="../static/assets/js/plugins/popper.min.js"></script>
+  <script src="../static/assets/js/plugins/simplebar.min.js"></script>
+  <script src="../static/assets/js/plugins/bootstrap.min.js"></script>
+  <script src="../static/assets/js/fonts/custom-font.js"></script>
+  <script src="../static/assets/js/pcoded.js"></script>
+  <script src="../static/assets/js/plugins/feather.min.js"></script>
+  
+  <!-- Calendar Scripts -->
+  <script src="../static/assets/js/plugins/moment.min.js"></script>
+  <script src="../static/assets/js/plugins/fullcalendar.min.js"></script>
+  
+  <!-- Custom Scripts -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Init layout
+      layout_change('light');
+      change_box_container('false');
+      layout_rtl_change('false');
+      preset_change("preset-1");
+      font_change("Public-Sans");
+      
+      // Initialize the calendar
+      const calendarEl = document.getElementById('appointment-calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        events: [
+          {% for appointment in upcoming_appointments %}
+          {
+            id: '{{ appointment.appointment_id }}',
+            title: '{{ appointment.patient_first_name }} {{ appointment.patient_last_name }}',
+            start: '{{ appointment.appointment_date.strftime('%Y-%m-%d') }}T{{ appointment.time_display }}:00',
+            {% if appointment.appointment_time_obj %}
+            end: '{{ appointment.appointment_date.strftime('%Y-%m-%d') }}T{{ '%02d:%02d:00'|format((appointment.appointment_time_obj.hour * 60 + appointment.appointment_time_obj.minute + appointment.duration) // 60, (appointment.appointment_time_obj.hour * 60 + appointment.appointment_time_obj.minute + appointment.duration) % 60) }}',
+            {% else %}
+            end: '{{ appointment.appointment_date.strftime('%Y-%m-%d') }}T{{ appointment.time_display }}:00',
+            {% endif %}
+            backgroundColor: '{% if appointment.status == "Scheduled" %}#4680ff{% elif appointment.status == "Completed" %}#2ed8b6{% else %}#f44236{% endif %}',
+            borderColor: '{% if appointment.status == "Scheduled" %}#4680ff{% elif appointment.status == "Completed" %}#2ed8b6{% else %}#f44236{% endif %}',
+            textColor: '#fff',
+            extendedProps: {
+              status: '{{ appointment.status }}',
+              patientId: '{{ appointment.patient_id }}',
+              duration: '{{ appointment.duration }}'
+            }
+          }{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ],
+        selectable: true,
+        select: function(info) {
+          // Open quick add modal with the selected date/time
+          const modal = document.getElementById('quickAddModal');
+          const bsModal = new bootstrap.Modal(modal);
+          
+          // Set the date and time in the form
+          document.getElementById('appointment_date').value = info.startStr.split('T')[0];
+          
+          if (info.startStr.includes('T')) {
+            const timeStr = info.startStr.split('T')[1].substring(0, 5);
+            document.getElementById('appointment_time').value = timeStr;
+          } else {
+            // Default to 9:00 AM if day view is selected
+            document.getElementById('appointment_time').value = '09:00';
+          }
+          
+          bsModal.show();
+        },
+        eventClick: function(info) {
+          // Redirect to appointment details
+          window.location.href = `/appointments/${info.event.id}`;
+        },
+        nowIndicator: true,
+        slotMinTime: '08:00:00',
+        slotMaxTime: '18:00:00',
+        allDaySlot: false,
+        height: 'auto',
+        businessHours: {
+          daysOfWeek: [1, 2, 3, 4, 5], // Monday - Friday
+          startTime: '08:00',
+          endTime: '17:00',
+        }
+      });
+      
+      calendar.render();
+      
+      // Update unread message count every 2 minutes
+      function updateUnreadMessageCount() {
+        fetch('/api/messages/unread-count')
+          .then(response => response.json())
+          .then(data => {
+            const messageCountBadge = document.querySelector('.pc-h-badge');
+            if (messageCountBadge) {
+              if (data.count > 0) {
+                messageCountBadge.style.display = 'block';
+              } else {
+                messageCountBadge.style.display = 'none';
+              }
+            }
+          })
+          .catch(error => console.error('Error fetching message count:', error));
+      }
+      
+      updateUnreadMessageCount();
+      setInterval(updateUnreadMessageCount, 120000);
+      
+      // Handle status change confirmation
+      window.markAsCompleted = function(appointmentId) {
+        const modal = document.getElementById('statusChangeModal');
+        const bsModal = new bootstrap.Modal(modal);
+        
+        document.getElementById('statusChangeModalLabel').textContent = 'Mark Appointment as Completed';
+        document.getElementById('statusChangeMessage').textContent = 'Are you sure you want to mark this appointment as completed?';
+        document.getElementById('appointmentId').value = appointmentId;
+        document.getElementById('newStatus').value = 'Completed';
+        
+        // Show session notes field
+        document.getElementById('sessionNotesContainer').style.display = 'block';
+        document.getElementById('noShowReasonContainer').style.display = 'none';
+        document.getElementById('otherReasonContainer').style.display = 'none';
+        
+        bsModal.show();
+      };
+      
+      window.markAsCancelled = function(appointmentId) {
+        const modal = document.getElementById('statusChangeModal');
+        const bsModal = new bootstrap.Modal(modal);
+        
+        document.getElementById('statusChangeModalLabel').textContent = 'Cancel Appointment';
+        document.getElementById('statusChangeMessage').textContent = 'Are you sure you want to cancel this appointment?';
+        document.getElementById('appointmentId').value = appointmentId;
+        document.getElementById('newStatus').value = 'Cancelled';
+        
+        // Hide all additional fields
+        document.getElementById('sessionNotesContainer').style.display = 'none';
+        document.getElementById('noShowReasonContainer').style.display = 'none';
+        document.getElementById('otherReasonContainer').style.display = 'none';
+        
+        bsModal.show();
+      };
+      
+      window.markAsNoShow = function(appointmentId) {
+        const modal = document.getElementById('statusChangeModal');
+        const bsModal = new bootstrap.Modal(modal);
+        
+        document.getElementById('statusChangeModalLabel').textContent = 'Mark as No-Show';
+        document.getElementById('statusChangeMessage').textContent = 'Are you sure you want to mark this appointment as No-Show?';
+        document.getElementById('appointmentId').value = appointmentId;
+        document.getElementById('newStatus').value = 'No-Show';
+        
+        // Show no-show reason field
+        document.getElementById('sessionNotesContainer').style.display = 'none';
+        document.getElementById('noShowReasonContainer').style.display = 'block';
+        document.getElementById('otherReasonContainer').style.display = 'none';
+        
+        bsModal.show();
+      };
+      
+      // Handle reason for no-show selection
+      document.getElementById('noShowReason').addEventListener('change', function() {
+        if (this.value === 'Other') {
+          document.getElementById('otherReasonContainer').style.display = 'block';
+        } else {
+          document.getElementById('otherReasonContainer').style.display = 'none';
+        }
+      });
+      
+      // Handle status change form submission
+      document.getElementById('confirmStatusChange').addEventListener('click', function() {
+        const appointmentId = document.getElementById('appointmentId').value;
+        const newStatus = document.getElementById('newStatus').value;
+        
+        let formData = new FormData();
+        formData.append('status', newStatus);
+        
+        if (newStatus === 'Completed') {
+          formData.append('session_notes', document.getElementById('sessionNotes').value);
+        } else if (newStatus === 'No-Show') {
+          const reason = document.getElementById('noShowReason').value;
+          formData.append('no_show_reason', reason);
+          
+          if (reason === 'Other') {
+            formData.append('other_reason', document.getElementById('otherReason').value);
+          }
+        }
+        
+        // Submit the form via fetch
+        fetch(`/appointments/${appointmentId}/status`, {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => {
+          if (response.ok) {
+            // Reload the page on success
+            window.location.reload();
+          } else {
+            throw new Error('Error updating appointment status');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('There was an error updating the appointment status. Please try again.');
+        });
+      });
+      
+      // Handle quick add form submission
+      document.getElementById('saveQuickAdd').addEventListener('click', function() {
+        document.getElementById('quickAddForm').submit();
+      });
+    });
+  </script>
+</body>
+</html>

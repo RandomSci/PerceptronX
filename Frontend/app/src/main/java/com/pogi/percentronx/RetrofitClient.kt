@@ -10,7 +10,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object retrofitClient {
-    private const val baseUrl = "http://192.168.1.14:8000/"
+    private const val baseUrl = "http://192.168.100.22:8000/"
 
     private val cookieJar = object : CookieJar {
         private val cookieStore = HashMap<String, List<Cookie>>()

@@ -12,7 +12,8 @@ from fastapi import *
 from ultralytics import YOLO
 from typing import Optional, Dict, List
 import cv2, matplotlib.pyplot as plt, pandas as pd, torch, bcrypt, user_agents, datetime
-from datetime import timedelta
+from datetime import date, time, timedelta
+import traceback
 from contextlib import asynccontextmanager
 import uvicorn, secrets, qrcode, io, socket, time
 import json

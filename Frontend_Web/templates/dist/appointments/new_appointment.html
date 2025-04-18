@@ -652,36 +652,36 @@
   <!-- Custom Scripts -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Init layout
+
       layout_change('light');
       change_box_container('false');
       layout_rtl_change('false');
       preset_change("preset-1");
       font_change("Public-Sans");
       
-      // Initialize Select2
+
       $('.select2').select2({
         width: '100%',
         placeholder: 'Select Patient'
       });
       
-      // Set default time values
+
       const currentHour = new Date().getHours();
       let defaultTime;
       
-      // Default to next available hour during business hours (8am-5pm)
+
       if (currentHour < 8) {
         defaultTime = '08:00'; // Start of day
       } else if (currentHour >= 17) {
         defaultTime = '08:00'; // Next day beginning
       } else {
-        // Next full hour
+
         defaultTime = `${currentHour + 1}:00`;
       }
       
       document.getElementById('appointment_time').value = defaultTime;
       
-      // Form validation
+
       document.getElementById('appointmentForm').addEventListener('submit', function(event) {
         const patientId = document.getElementById('patient_id').value;
         const appointmentDate = document.getElementById('appointment_date').value;
@@ -693,7 +693,7 @@
         }
       });
       
-      // Show patient info when a patient is selected
+
       document.getElementById('patient_id').addEventListener('change', function() {
         const patientId = this.value;
         if (patientId) {
@@ -703,10 +703,10 @@
         }
       });
       
-      // Function to fetch patient info via API
+
       function fetchPatientInfo(patientId) {
-        // This is where you would make an AJAX call to your API to get patient details
-        // For demonstration, we'll use dummy data
+
+
         const patientInfo = patientsData.find(patient => patient.id == patientId);
         
         if (patientInfo) {
@@ -721,7 +721,7 @@
         }
       }
       
-      // Toggle repeating appointments section
+
       document.getElementById('enableRepeatingAppointments').addEventListener('change', function() {
         document.getElementById('repeatingAppointmentsSection').style.display = this.checked ? 'block' : 'none';
         if (this.checked) {
@@ -729,13 +729,13 @@
         }
       });
       
-      // Update repeating dates preview when changes are made
+
       document.getElementById('appointment_date').addEventListener('change', updateRepeatingDatesPreview);
       document.getElementById('appointment_time').addEventListener('change', updateRepeatingDatesPreview);
       document.getElementById('repeatFrequency').addEventListener('change', updateRepeatingDatesPreview);
       document.getElementById('repeatCount').addEventListener('change', updateRepeatingDatesPreview);
       
-      // Function to update repeating dates preview
+
       function updateRepeatingDatesPreview() {
         if (!document.getElementById('enableRepeatingAppointments').checked) return;
         
@@ -777,7 +777,7 @@
           
           tableBody.appendChild(row);
           
-          // Calculate next date based on frequency
+
           if (frequency === 'weekly') {
             currentDate.setDate(currentDate.getDate() + 7);
           } else if (frequency === 'biweekly') {
@@ -788,7 +788,7 @@
         }
       }
       
-      // Format date as "Mon, Jan 1, 2023"
+
       function formatDate(dateStr) {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', { 
@@ -799,7 +799,7 @@
         });
       }
       
-      // Format time from 24h to 12h
+
       function formatTime(timeStr) {
         const [hours, minutes] = timeStr.split(':');
         let period = 'AM';
@@ -814,8 +814,8 @@
         return `${hour}:${minutes} ${period}`;
       }
       
-      // Dummy data for patient info display
-      // In a real application, this would come from your API
+
+
       const patientsData = [
         {% for patient in patients %}
         {
@@ -830,12 +830,12 @@
         {% endfor %}
       ];
       
-      // Check for scheduling conflicts
+
       document.getElementById('appointmentForm').addEventListener('submit', function(event) {
         const selectedDate = document.getElementById('appointment_date').value;
         const selectedTime = document.getElementById('appointment_time').value;
         
-        // Demo conflict detection - in a real app, you would check against your database
+
         const hasConflict = Math.random() > 0.7; // 30% chance of conflict for demo
         
         if (hasConflict) {
@@ -845,7 +845,7 @@
         }
       });
       
-      // Handle "Proceed Anyway" button in conflict modal
+
       document.getElementById('proceedAnyway').addEventListener('click', function() {
         document.getElementById('appointmentForm').submit();
       });

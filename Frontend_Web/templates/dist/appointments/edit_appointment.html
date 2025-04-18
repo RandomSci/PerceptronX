@@ -1,0 +1,179 @@
+{% extends "dist/base.html" %}
+
+{% block title %}Edit Appointment | APR-CV{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-block">
+    <div class="row align-items-center">
+      <div class="col-md-12">
+        <div class="page-header-title">
+          <h5 class="m-b-10">Edit Appointment</h5>
+        </div>
+        <ul class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/front-page">Home</a></li>
+          <li class="breadcrumb-item"><a href="/appointments">Appointments</a></li>
+          <li class="breadcrumb-item" aria-current="page">Edit Appointment</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h5>Edit Appointment</h5>
+      </div>
+      <div class="card-body">
+        {% if request.query_params.get('error') %}
+          <div class="alert alert-danger">
+            {% if request.query_params.get('error') == 'missing_fields' %}
+              All required fields must be filled out.
+            {% elif request.query_params.get('error') == 'invalid_patient' %}
+              Invalid patient selected.
+            {% elif request.query_params.get('error') == 'invalid_time_format' %}
+              Invalid time format. Please use HH:MM format.
+            {% elif request.query_params.get('error') == 'db_error' %}
+              An error occurred while updating the appointment. Please try again.
+            {% else %}
+              An error occurred. Please try again.
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <form action="/appointments/{{ appointment.appointment_id }}/edit" method="POST">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group mb-3">
+                <label for="patient_id" class="form-label">Patient <span class="text-danger">*</span></label>
+                <select class="form-select" id="patient_id" name="patient_id" required>
+                  <option value="">Select Patient</option>
+                  {% for patient in patients %}
+                    <option value="{{ patient.patient_id }}" {% if patient.patient_id == appointment.patient_id %}selected{% endif %}>
+                      {{ patient.first_name }} {{ patient.last_name }} {% if patient.diagnosis %}({{ patient.diagnosis }}){% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group mb-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                  {% for status_option in status_options %}
+                    <option value="{{ status_option }}" {% if status_option == appointment.status %}selected{% endif %}>
+                      {{ status_option }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group mb-3">
+                <label for="appointment_date" class="form-label">Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="appointment_date" name="appointment_date" 
+                       value="{{ appointment_date }}" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group mb-3">
+                <label for="appointment_time" class="form-label">Time <span class="text-danger">*</span></label>
+                <input type="time" class="form-control" id="appointment_time" name="appointment_time" 
+                       value="{{ appointment_time }}" required>
+                <small class="text-muted">Use 24-hour format (e.g. 14:30 for 2:30 PM)</small>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group mb-3">
+                <label for="duration" class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-control" id="duration" name="duration" 
+                       value="{{ appointment.duration }}" min="15" step="15">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea class="form-control" id="notes" name="notes" rows="4">{{ appointment.notes }}</textarea>
+          </div>
+
+          <div class="d-flex justify-content-between mt-4">
+            <a href="/appointments" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="ti ti-device-floppy me-1"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+
+    const datePicker = document.getElementById('appointment_date');
+    if (datePicker) {
+      datePicker.min = new Date().toISOString().split('T')[0]; // Prevent selecting dates in the past
+    }
+    
+
+    const timePicker = document.getElementById('appointment_time');
+    
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+      let isValid = true;
+      
+
+      const patientId = document.getElementById('patient_id').value;
+      if (!patientId) {
+        isValid = false;
+        document.getElementById('patient_id').classList.add('is-invalid');
+      } else {
+        document.getElementById('patient_id').classList.remove('is-invalid');
+      }
+      
+
+      const appointmentDate = document.getElementById('appointment_date').value;
+      if (!appointmentDate) {
+        isValid = false;
+        document.getElementById('appointment_date').classList.add('is-invalid');
+      } else {
+        document.getElementById('appointment_date').classList.remove('is-invalid');
+      }
+      
+
+      const appointmentTime = document.getElementById('appointment_time').value;
+      if (!appointmentTime) {
+        isValid = false;
+        document.getElementById('appointment_time').classList.add('is-invalid');
+      } else {
+        document.getElementById('appointment_time').classList.remove('is-invalid');
+      }
+      
+      if (!isValid) {
+        event.preventDefault();
+
+        const errorAlert = document.createElement('div');
+        errorAlert.className = 'alert alert-danger';
+        errorAlert.textContent = 'Please fill in all required fields.';
+        
+        const existingAlert = document.querySelector('.alert');
+        if (existingAlert) {
+          existingAlert.replaceWith(errorAlert);
+        } else {
+          form.prepend(errorAlert);
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}
